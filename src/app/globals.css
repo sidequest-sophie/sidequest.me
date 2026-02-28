@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fffbe6;
+  --ink: #1a1a1a;
+  --border: 3px solid #1a1a1a;
+  --orange: #ff6b35;
+  --green: #00d4aa;
+  --pink: #ff69b4;
+  --blue: #4d9fff;
+  --yellow: #ffd23f;
+  --lilac: #c4a8ff;
+  --radius: 0px;
+  --font-head: 'Archivo', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-orange: var(--orange);
+  --color-green: var(--green);
+  --color-pink: var(--pink);
+  --color-blue: var(--blue);
+  --color-yellow: var(--yellow);
+  --color-lilac: var(--lilac);
+  --font-head: var(--font-head);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* ═══════════════ STICKER COMPONENT ═══════════════ */
+.sticker {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 3px solid var(--ink);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  color: var(--ink);
+}
+.sticker:hover { transform: rotate(-2deg) scale(1.06); }
+
+.sticker-orange { background: var(--orange); color: white; transform: rotate(-1deg); }
+.sticker-green { background: var(--green); transform: rotate(1deg); border-radius: 20px; }
+.sticker-pink { background: var(--pink); color: white; transform: rotate(-2deg); }
+.sticker-blue { background: var(--blue); color: white; transform: rotate(1.5deg); border-radius: 8px; }
+.sticker-yellow { background: var(--yellow); transform: rotate(-0.5deg); }
+.sticker-lilac { background: var(--lilac); transform: rotate(2deg); border-radius: 4px; }
+
+/* ═══════════════ BADGE COMPONENT ═══════════════ */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-family: var(--font-head);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 2px solid var(--ink);
+}
+.badge-orange { background: var(--orange); color: white; }
+.badge-green { background: var(--green); }
+.badge-pink { background: var(--pink); color: white; }
+.badge-blue { background: var(--blue); color: white; }
+.badge-yellow { background: var(--yellow); }
+.badge-lilac { background: var(--lilac); }
+
+/* ═══════════════ CARD HOVER ═══════════════ */
+.card-hover {
+  transition: all 0.15s ease;
+}
+.card-hover:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* ═══════════════ SECTION TITLE ═══════════════ */
+.section-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 3px;
+  background: var(--ink);
+}
+
+/* ═══════════════ TICKER ═══════════════ */
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ═══════════════ STATUS DOT PULSE ═══════════════ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ═══════════════ DECORATIVE DOODLES ═══════════════ */
+.doodle {
+  position: absolute;
+  border: 3px solid var(--ink);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+.doodle-circle {
+  border-radius: 50%;
+}
+
+/* ═══════════════ RESPONSIVE ═══════════════ */
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+}

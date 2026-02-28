@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.local
+tsconfig.tsbuildinfo
+*.tgz
+.DS_Store
+
+# Non-code files
+sidequest-agentic-operating-model.docx
+asana-task-rules.md
+My Content/
