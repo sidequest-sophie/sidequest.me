@@ -60,7 +60,7 @@ export const companies: Company[] = [
   },
   {
     name: "Category Leaders",
-    logo: "/logos/self-employed.svg",
+    logo: "/logos/categoryleaders.png",
     logoText: "CL",
     brandColour: "#E91E63",
     type: "single",
@@ -88,7 +88,7 @@ export const companies: Company[] = [
   },
   {
     name: "Signal AI",
-    logo: "/logos/signalmedia.svg",
+    logo: "/logos/signalai.svg",
     logoText: "SA",
     brandColour: "#0066FF",
     type: "single",
@@ -190,7 +190,7 @@ export const companies: Company[] = [
   },
   {
     name: "Cumbria Police",
-    logo: "/logos/earlier-career.svg",
+    logo: "/logos/cumbriapolice.png",
     logoText: "CP",
     brandColour: "#003366",
     type: "single",
@@ -216,7 +216,7 @@ export const companies: Company[] = [
   },
   {
     name: "Business Serve",
-    logo: "/logos/earlier-career.svg",
+    logo: "/logos/businessserve.svg",
     logoText: "BS",
     brandColour: "#666666",
     type: "single",
