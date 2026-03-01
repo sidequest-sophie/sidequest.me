@@ -7,7 +7,10 @@ tsconfig.tsbuildinfo
 .DS_Store
 
 # Non-code files
-sidequest-agentic-operating-model.docx
-asana-task-rules.md
+docs/sidequest-agentic-operating-model.docx
+docs/asana-task-rules.md
 My Content/
 .vercel
+
+# Design iteration previews
+design-spec/previews/
