@@ -45,7 +45,7 @@ export const companies: Company[] = [
       { label: "Strategy", type: "loz" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Led product marketing for the world's largest cybersecurity upskilling platform. Built positioning, GTM, and competitive strategy.",
     },
@@ -72,7 +72,7 @@ export const companies: Company[] = [
       { label: "GTM", type: "loz" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Independent consulting on go-to-market strategy, product marketing, and analyst relations for B2B tech companies.",
     },
@@ -108,7 +108,7 @@ export const companies: Company[] = [
       { idx: 6, role: "VP Product Marketing", dates: "2019–2020", discipline: "marketing", track: 2, year: "2019" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Joined as a Solutions Engineer and worked across commercial, product, and marketing — ending up as VP Product Marketing. A proper career within a career.",
     },
@@ -136,7 +136,7 @@ export const companies: Company[] = [
       { label: "Strategy", type: "loz" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Led marketing at an AI-powered media intelligence startup through Series B growth. Built brand, demand gen, and comms.",
     },
@@ -167,7 +167,7 @@ export const companies: Company[] = [
       { idx: 1, role: "Senior Marketing Executive", dates: "2011–2012", discipline: "marketing", track: 2, year: "2011" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Early-stage social analytics company where I cut my teeth in B2B marketing. Brilliant team, brilliant product.",
     },
@@ -193,7 +193,7 @@ export const companies: Company[] = [
       { label: "Foundations", type: "loz" },
     ],
     blurbLeft: {
-      heading: "The Gist",
+      heading: "The Opportunity",
       content:
         "Started in development and IT ops before discovering a passion for product. The technical foundations that shaped everything that followed.",
     },

@@ -312,6 +312,10 @@ body {
   color: #444;
   padding-left: 18px;
   margin: 0;
+  list-style: disc;
+}
+.pro-blurb li {
+  margin-bottom: 2px;
 }
 
 @media (max-width: 640px) {

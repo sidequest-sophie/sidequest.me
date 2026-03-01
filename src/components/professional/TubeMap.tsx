@@ -103,7 +103,7 @@ export default function TubeMap({ stations }: TubeMapProps) {
       path.setAttribute("stroke-linecap", "round");
       path.setAttribute("stroke-linejoin", "round");
 
-      /* Gradient for discipline transitions (20/60/20 blend) */
+      /* Gradient for discipline transitions (33/33/33 blend) */
       if (discA !== discB) {
         const gradId = `grad-${i}`;
         let defs = svg.querySelector("defs");
@@ -123,8 +123,8 @@ export default function TubeMap({ stations }: TubeMapProps) {
 
         const stops = [
           { offset: "0%", color: colourMap[discA] },
-          { offset: "20%", color: colourMap[discA] },
-          { offset: "80%", color: colourMap[discB] },
+          { offset: "33%", color: colourMap[discA] },
+          { offset: "67%", color: colourMap[discB] },
           { offset: "100%", color: colourMap[discB] },
         ];
         stops.forEach((s) => {
