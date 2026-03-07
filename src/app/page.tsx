@@ -101,16 +101,31 @@ export default function Home() {
       {/* ── AGGREGATED FEED ── */}
       <section className="mb-14">
         <div className="section-title">What&apos;s New</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {feed.map((item, i) => (
             <Link
               key={item.id}
               href={item.link}
-              className="block border-3 border-ink bg-white card-hover no-underline text-ink overflow-hidden"
+              className="block border-3 border-ink bg-white card-hover no-underline text-ink overflow-visible relative"
               style={{
                 transform: `rotate(${feedRotations[i % feedRotations.length]})`,
               }}
             >
+              {/* numbered circle — top-left, hanging over corner */}
+              <span
+                className="absolute -top-3.5 -left-3.5 z-10 inline-flex items-center justify-center w-[32px] h-[32px] rounded-full border-3 border-ink text-white font-head font-[900] text-[0.75rem] leading-none"
+                style={{
+                  backgroundColor: badgeCircleColor[item.badge] || "var(--orange)",
+                  boxShadow: "1px 1px 0 var(--ink)",
+                }}
+              >
+                {i + 1}
+              </span>
+              {/* date — just to the right of the circle, over the image */}
+              <span className="absolute top-1.5 left-7 font-mono text-[0.58rem] text-white/90 leading-none whitespace-nowrap z-10" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
+                {item.date}
+              </span>
+
               {item.image && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -119,24 +134,11 @@ export default function Home() {
                   className="w-full h-28 object-cover border-b-3 border-ink"
                 />
               )}
-              <div className="p-5 relative">
-                {/* numbered circle + date — top-right */}
-                <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                  <span
-                    className="inline-flex items-center justify-center w-[28px] h-[28px] rounded-full border-2 border-ink text-white font-head font-bold text-[0.7rem] leading-none"
-                    style={{ backgroundColor: badgeCircleColor[item.badge] || "var(--orange)" }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="font-mono text-[0.6rem] text-gray-400 leading-none">
-                    {item.date}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`badge ${item.badge}`}>
-                    {typeIcons[item.type]} {item.badgeLabel}
-                  </span>
-                </div>
+              <div className="p-5 pt-4 relative">
+                {/* badge tag — top-right */}
+                <span className={`badge ${item.badge} absolute top-3 right-3`}>
+                  {typeIcons[item.type]} {item.badgeLabel}
+                </span>
                 <h3 className="font-head font-bold text-[0.95rem] uppercase mt-1 mb-1.5 leading-tight">
                   {item.title}
                 </h3>
