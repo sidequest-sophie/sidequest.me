@@ -7,7 +7,7 @@ const latestPhoto = posts[0];
 const stickers = [
   { label: "Product", color: "sticker-orange" },
   { label: "Marketing", color: "sticker-green" },
-  { label: "Photography", color: "sticker-pink" },
+
   { label: "Writing", color: "sticker-blue" },
   { label: "Cybersecurity", color: "sticker-yellow" },
   { label: "Side Projects", color: "sticker-lilac" },
@@ -24,6 +24,16 @@ const tickerItems = [
 ];
 
 const feedRotations = ["-0.3deg", "0.4deg", "-0.2deg", "0.5deg", "-0.4deg", "0.3deg"];
+
+/* colour token per badge class for the numbered circle */
+const badgeCircleColor: Record<string, string> = {
+  "badge-orange": "var(--orange)",
+  "badge-green": "var(--green)",
+  "badge-blue": "var(--blue)",
+  "badge-pink": "var(--pink)",
+  "badge-yellow": "var(--yellow)",
+  "badge-lilac": "var(--lilac)",
+};
 
 const typeIcons: Record<string, string> = {
   photo: "📸",
@@ -109,7 +119,19 @@ export default function Home() {
                   className="w-full h-28 object-cover border-b-3 border-ink"
                 />
               )}
-              <div className="p-5">
+              <div className="p-5 relative">
+                {/* numbered circle + date — top-right */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                  <span
+                    className="inline-flex items-center justify-center w-[28px] h-[28px] rounded-full border-2 border-ink text-white font-head font-bold text-[0.7rem] leading-none"
+                    style={{ backgroundColor: badgeCircleColor[item.badge] || "var(--orange)" }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="font-mono text-[0.6rem] text-gray-400 leading-none">
+                    {item.date}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`badge ${item.badge}`}>
                     {typeIcons[item.type]} {item.badgeLabel}
