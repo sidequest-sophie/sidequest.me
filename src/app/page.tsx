@@ -80,8 +80,8 @@ export default function Home() {
         </div>
 
         <div
-          className="hidden md:block border-3 border-ink bg-white p-2.5 relative"
-          style={{ transform: "rotate(1.5deg)" }}
+          className="hidden md:block border-3 border-ink bg-white p-2.5"
+          style={{ transform: "rotate(1.5deg)", boxShadow: "5px 5px 0 var(--ink)" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -92,10 +92,6 @@ export default function Home() {
           <p className="font-mono text-[0.7rem] text-center mt-2 opacity-60">
             📸 {latestPhoto.caption.slice(0, 60)}{latestPhoto.caption.length > 60 ? "…" : ""}
           </p>
-          <div
-            className="absolute -bottom-1 -right-1 w-full h-full border-3 border-ink -z-1"
-            style={{ transform: "translate(5px, 5px)" }}
-          />
         </div>
       </section>
 
