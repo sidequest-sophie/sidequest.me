@@ -7,12 +7,11 @@ interface UsernameLayoutProps {
   };
 }
 
-export default function UsernameLayout({
+export default async function UsernameLayout({
   children,
   params,
 }: UsernameLayoutProps) {
-  // TODO: Replace with dynamic username lookup from Supabase
-  const username = params.username;
-
+  const { username } = await Promise.resolve(params);
+  void username; // available for future use (e.g. Supabase profile lookup)
   return <>{children}</>;
 }
