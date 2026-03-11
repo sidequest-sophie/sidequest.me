@@ -60,4 +60,5 @@ Thumbs.db
 !.env.example
 *.pem
 *.p12
+*.pat
 service-account*.json
