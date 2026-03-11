@@ -18,7 +18,7 @@ export default function Nav({ currentUsername }: NavProps) {
 
   const profileBase = `/${NAV_USERNAME}`;
   const links = [
-    { href: "/", label: "Home" },
+    { href: profileBase, label: "Home" },
     { href: `${profileBase}/about`, label: "About" },
     { href: `${profileBase}/professional`, label: "Professional" },
     { href: `${profileBase}/photowall`, label: "Photowall" },
@@ -29,7 +29,7 @@ export default function Nav({ currentUsername }: NavProps) {
   return (
     <nav className="sticky top-0 z-100 bg-bg border-b-3 border-ink flex items-center justify-between px-8 py-3.5 flex-wrap gap-3">
       <Link
-        href="/"
+        href={profileBase}
         className="font-head font-[900] text-[1.1rem] uppercase tracking-tight no-underline text-ink"
       >
         sidequest.me

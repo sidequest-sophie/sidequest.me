@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
+// Link import removed — sign-up link disabled for now [SQ.S-W-2603-0032]
 import { createClient } from '@/lib/supabase/client'
 
 type AuthMode = 'magic-link' | 'password'
@@ -243,11 +243,11 @@ function LoginForm() {
           </p>
         )}
 
-        <p className="font-mono text-[0.75rem] opacity-60 text-center">
-          No account?{' '}
-          <Link href="/signup" className="text-ink font-bold underline">
-            Sign up
-          </Link>
+        <p className="font-mono text-[0.75rem] opacity-40 text-center">
+          No account?{" "}
+          <span className="text-ink/40 font-bold cursor-default" title="Coming soon">
+            Sign up — coming soon
+          </span>
         </p>
       </form>
     </>
