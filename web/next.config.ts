@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.b-cdn.net",
       },
+      {
+        protocol: "https",
+        hostname: "loawjmjuwrjjgmedswro.supabase.co",
+      },
     ],
   },
   redirects: async () => [
