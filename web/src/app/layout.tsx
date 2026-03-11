@@ -41,7 +41,11 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <Nav currentUsername={currentProfile?.username ?? null} />
+        <Nav
+          currentUsername={currentProfile?.username ?? null}
+          displayName={currentProfile?.display_name ?? null}
+          avatarUrl={currentProfile?.avatar_url ?? null}
+        />
         {children}
         <Footer />
       </body>

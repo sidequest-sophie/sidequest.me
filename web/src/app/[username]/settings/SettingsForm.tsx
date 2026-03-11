@@ -1,10 +1,17 @@
 "use client";
 
+/**
+ * Profile settings form — edit display name, bio, and avatar.
+ * Avatar upload replaces the old URL text field.
+ * [SQ.S-W-2603-0034]
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/profiles";
 import type { TablesUpdate } from "@/types/database";
+import AvatarUpload from "@/components/AvatarUpload";
 
 interface SettingsFormProps {
   profile: Profile;
@@ -27,7 +34,6 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
 
     try {
       const supabase = createClient();
-      // Explicit type needed — postgrest-js 2.99 + TS 5.9 infers table operations as never
       const updates: TablesUpdate<"profiles"> = {
         display_name: displayName.trim() || null,
         bio: bio.trim() || null,
@@ -45,7 +51,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         setError(updateError.message);
       } else {
         setSaved(true);
-        router.refresh(); // re-fetch server data
+        router.refresh();
       }
     } catch {
       setError("An unexpected error occurred");
@@ -56,10 +62,22 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
 
   const inputClass =
     "w-full px-4 py-2.5 border-3 border-ink bg-white font-mono text-[0.88rem] focus:outline-none focus:shadow-[3px_3px_0_var(--ink)] transition-shadow";
-  const labelClass = "block font-head font-bold text-[0.78rem] uppercase mb-2";
+  const labelClass =
+    "block font-head font-bold text-[0.78rem] uppercase mb-2";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Avatar */}
+      <div className="flex flex-col items-center py-2">
+        <AvatarUpload
+          userId={profile.id}
+          displayName={displayName || profile.username}
+          currentAvatarUrl={avatarUrl || null}
+          onUploaded={(url) => setAvatarUrl(url)}
+        />
+      </div>
+
+      {/* Display Name */}
       <div>
         <label htmlFor="displayName" className={labelClass}>
           Display Name
@@ -78,6 +96,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         </p>
       </div>
 
+      {/* Bio */}
       <div>
         <label htmlFor="bio" className={labelClass}>
           Bio
@@ -96,35 +115,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         </p>
       </div>
 
-      <div>
-        <label htmlFor="avatarUrl" className={labelClass}>
-          Avatar URL
-        </label>
-        <input
-          id="avatarUrl"
-          type="url"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://images.sidequest.me/avatar.jpg"
-          className={inputClass}
-        />
-        <p className="font-mono text-[0.68rem] opacity-50 mt-1.5">
-          Direct image URL. Upload support coming soon.
-        </p>
-        {avatarUrl && (
-          <div className="mt-3 flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={avatarUrl}
-              alt="Avatar preview"
-              className="w-12 h-12 rounded-full border-3 border-ink object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <span className="font-mono text-[0.68rem] opacity-50">Preview</span>
-          </div>
-        )}
-      </div>
-
+      {/* Status messages */}
       {error && (
         <div className="border-3 border-red-500 bg-red-50 p-3 font-mono text-[0.78rem] text-red-600">
           {error}
@@ -137,6 +128,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         </div>
       )}
 
+      {/* Actions */}
       <div className="flex gap-3">
         <button
           type="submit"
