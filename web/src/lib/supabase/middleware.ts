@@ -4,10 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Routes that require authentication (regex patterns)
 const PROTECTED_PATTERNS = [
   /^\/[^/]+\/settings(\/.*)?$/,  // /[username]/settings/*
+  /^\/onboarding$/,              // /onboarding
+  /^\/reset-password$/,          // /reset-password (needs recovery session)
 ]
 
-// Auth routes — redirect to own profile if already logged in
-const AUTH_ROUTES = ['/login', '/signup']
+// Auth routes — redirect already-authenticated users away
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password']
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -43,17 +45,31 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect already-authenticated users away from login/signup
-  if (AUTH_ROUTES.includes(pathname) && user) {
-    // Fetch username from profiles table to redirect to own profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .single()
+  // If logged in and onboarding not complete → force to /onboarding
+  // (unless already on /onboarding to prevent redirect loop)
+  if (user && pathname !== '/onboarding') {
+    const onboardingComplete = user.user_metadata?.onboarding_complete
+    if (onboardingComplete === false) {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
 
-    const target = profile?.username ? `/${profile.username}` : '/'
-    return NextResponse.redirect(new URL(target, request.url))
+  // Redirect already-authenticated (and onboarded) users away from auth routes
+  if (AUTH_ROUTES.includes(pathname) && user) {
+    const onboardingComplete = user.user_metadata?.onboarding_complete
+    // Don't redirect if they still need onboarding — they'll be caught above on next request
+    if (onboardingComplete !== false) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any
+      const { data: profile } = await db
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single()
+
+      const target = profile?.username ? `/${profile.username}` : '/'
+      return NextResponse.redirect(new URL(target, request.url))
+    }
   }
 
   return supabaseResponse

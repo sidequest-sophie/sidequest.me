@@ -4,6 +4,7 @@ import { posts } from "@/lib/photowall-data";
 import { photowallUrl } from "@/lib/cdn";
 import { buildFeed } from "@/lib/feed-data";
 import { getProfileByUsername, getCurrentUser } from "@/lib/profiles";
+import WelcomeBanner from "@/components/WelcomeBanner";
 
 const latestPhoto = posts[0];
 
@@ -47,10 +48,12 @@ const typeIcons: Record<string, string> = {
 
 interface ProfilePageProps {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ welcome?: string; passwordReset?: string }>;
 }
 
-export default async function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {
   const { username } = await params;
+  const sp = await searchParams;
   const feed = buildFeed();
 
   // Both calls are React.cache-deduped — no extra DB round-trips vs layout
@@ -68,8 +71,15 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const bio = profile.bio ?? "Product leader turned product marketer. 20+ years taking enterprise software to market — from code to customer. This is my corner of the internet.";
   const avatarUrl = profile.avatar_url;
 
+  const showWelcome = isOwner && sp.welcome === '1'
+  const showPasswordReset = isOwner && sp.passwordReset === '1'
+
   return (
     <main className="max-w-[1100px] mx-auto px-8 py-12 relative">
+      {/* Welcome / confirmation banners */}
+      {showWelcome && <WelcomeBanner type="welcome" username={username} />}
+      {showPasswordReset && <WelcomeBanner type="passwordReset" username={username} />}
+
       {/* Decorative doodles */}
       <div className="doodle doodle-circle" style={{ width: 120, height: 120, top: 40, right: -30 }} />
       <div className="doodle" style={{ width: 80, height: 80, bottom: 200, left: -20 }} />
