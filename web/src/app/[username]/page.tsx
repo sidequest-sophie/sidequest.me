@@ -16,7 +16,8 @@ const stickers = [
   { label: "Side Projects", color: "sticker-lilac" },
 ];
 
-const tickerItems = [
+/** Fallback ticker items used only if profile has no ticker_items set in DB */
+const DEFAULT_TICKER_ITEMS = [
   "Sr. Director PMM at Hack The Box",
   "20+ years in tech",
   "Surrey-based",
@@ -67,6 +68,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const displayName = profile.display_name ?? "Sophie Collins builds things & tells their story";
   const bio = profile.bio ?? "Product leader turned product marketer. 20+ years taking enterprise software to market — from code to customer. This is my corner of the internet.";
   const avatarUrl = profile.avatar_url;
+  const tickerItems = (profile.ticker_items && profile.ticker_items.length > 0)
+    ? profile.ticker_items
+    : DEFAULT_TICKER_ITEMS;
 
   return (
     <main className="max-w-[1100px] mx-auto px-8 py-12 relative">

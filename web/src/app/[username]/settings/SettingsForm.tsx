@@ -12,9 +12,10 @@ import type { Profile } from "@/lib/profiles";
 import AvatarUpload from "@/components/AvatarUpload";
 import FactoidEditor from "@/components/settings/FactoidEditor";
 import LikesDislikesEditor from "@/components/settings/LikesDislikesEditor";
+import TickerEditor from "@/components/settings/TickerEditor";
 import type { Factoid, LikeDislike } from "@/types/profile-extras";
 
-const SETTINGS_TABS = ["Profile", "Professional", "About", "Likes & Dislikes"] as const;
+const SETTINGS_TABS = ["Profile", "Professional", "About", "Likes & Dislikes", "Ticker"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 interface SettingsFormProps {
@@ -48,6 +49,11 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
     (profile.dislikes as LikeDislike[] | null) ?? []
   );
 
+  // ── Ticker tab state ──
+  const [tickerItems, setTickerItems] = useState<string[]>(
+    (profile.ticker_items as string[] | null) ?? []
+  );
+
   // ── Shared save state ──
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +85,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         factoids: factoids.length > 0 ? factoids : [],
         likes: likes.length > 0 ? likes : [],
         dislikes: dislikes.length > 0 ? dislikes : [],
+        ticker_items: tickerItems.length > 0 ? tickerItems : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -264,6 +271,26 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
           <div>
             <div className={labelClass}>Hates 😤</div>
             <LikesDislikesEditor items={dislikes} onChange={setDislikes} />
+          </div>
+        </div>
+      )}
+
+
+      {/* ══════ TICKER TAB ══════ */}
+      {tab === "Ticker" && (
+        <div className="space-y-8">
+          <p className="font-mono text-[0.78rem] opacity-60 leading-relaxed">
+            Short items that scroll across the bottom of your profile page. Up to 10 items.
+            <br />
+            <strong className="opacity-80">Pin</strong> items to keep them when using AI reroll.
+          </p>
+
+          <div>
+            <div className={labelClass}>Ticker Items</div>
+            <TickerEditor
+              items={tickerItems}
+              onChange={setTickerItems}
+            />
           </div>
         </div>
       )}
