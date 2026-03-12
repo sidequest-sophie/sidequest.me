@@ -54,11 +54,11 @@ export default function AvatarUpload({
     try {
       const supabase = createClient();
       const ext = file.name.split(".").pop() ?? "jpg";
-      const filePath = `${userId}/avatar.${ext}`;
+      const filePath = `${userId}/avatars/avatar.${ext}`;
 
       // Upload (upsert to replace existing)
       const { error: uploadError } = await supabase.storage
-        .from("avatars")
+        .from("photos")
         .upload(filePath, file, { upsert: true, contentType: file.type });
 
       if (uploadError) {
@@ -69,7 +69,7 @@ export default function AvatarUpload({
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
+        .from("photos")
         .getPublicUrl(filePath);
 
       // Append cache-buster so the browser doesn't serve stale avatar
