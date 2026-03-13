@@ -7,12 +7,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import me.sidequest.app.ui.screens.EditProfileScreen
 import me.sidequest.app.ui.screens.FeedScreen
+import me.sidequest.app.ui.screens.LightboxScreen
 import me.sidequest.app.ui.screens.LoginScreen
 import me.sidequest.app.ui.screens.PhotowallScreen
 import me.sidequest.app.ui.screens.ProfileScreen
 import me.sidequest.app.ui.screens.WritingsScreen
 
-// [SQ.M-A-2603-0021] [SQ.M-A-2603-0024]
+// [SQ.M-A-2603-0021] [SQ.M-A-2603-0024] [SQ.M-A-2603-0027]
 
 @Composable
 fun SideQuestNavHost(
@@ -48,7 +49,24 @@ fun SideQuestNavHost(
         }
 
         composable(Screen.Photowall.route) {
-            PhotowallScreen()
+            PhotowallScreen(
+                onPhotoClick = { index ->
+                    navController.navigate(Screen.Lightbox.routeFor(index))
+                },
+            )
+        }
+
+        composable(
+            route    = Screen.Lightbox.route,
+            arguments = listOf(androidx.navigation.navArgument("index") {
+                type = androidx.navigation.NavType.IntType
+            }),
+        ) { backStack ->
+            val startIndex = backStack.arguments?.getInt("index") ?: 0
+            LightboxScreen(
+                startIndex = startIndex,
+                onBack     = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.Writings.route) {
@@ -66,6 +84,9 @@ sealed class Screen(val route: String) {
     data object Profile     : Screen("profile")
     data object EditProfile : Screen("edit_profile")
     data object Photowall   : Screen("photowall")
+    data object Lightbox    : Screen("lightbox/{index}") {
+        fun routeFor(index: Int) = "lightbox/$index"
+    }
     data object Writings    : Screen("writings")
     data object Feed        : Screen("feed")
 }

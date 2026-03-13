@@ -30,7 +30,11 @@ val bottomNavItems = listOf(
 )
 
 /** Routes where the bottom nav should be hidden. */
-val routesWithoutNav = setOf(Screen.Login.route)
+val routesWithoutNav = setOf(
+    Screen.Login.route,
+    Screen.EditProfile.route,
+    Screen.Lightbox.route,
+)
 
 @Composable
 fun SideQuestBottomBar(navController: NavController) {

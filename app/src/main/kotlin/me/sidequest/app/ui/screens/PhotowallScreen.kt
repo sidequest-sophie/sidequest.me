@@ -1,20 +1,140 @@
 package me.sidequest.app.ui.screens
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import me.sidequest.app.data.model.Photo
+import me.sidequest.app.ui.photowall.PhotowallState
+import me.sidequest.app.ui.photowall.PhotowallViewModel
 
-// [SQ.M-A-2603-0021] stub — full implementation in SQ.M-A-2603-0027
+// [SQ.M-A-2603-0027]
+
+private const val LOAD_MORE_THRESHOLD = 6
 
 @Composable
-fun PhotowallScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("📸 Photos")
+fun PhotowallScreen(
+    onPhotoClick : (photoIndex: Int) -> Unit = {},
+    viewModel    : PhotowallViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsState()
+
+    when (val s = state) {
+        is PhotowallState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
+        is PhotowallState.Error -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text  = s.message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            }
+        }
+
+        is PhotowallState.Content -> {
+            PhotoGrid(
+                photos        = s.photos,
+                isLoadingMore = s.isLoadingMore,
+                onPhotoClick  = onPhotoClick,
+                onLoadMore    = viewModel::loadMore,
+            )
+        }
     }
+}
+
+@Composable
+private fun PhotoGrid(
+    photos       : List<Photo>,
+    isLoadingMore: Boolean,
+    onPhotoClick : (index: Int) -> Unit,
+    onLoadMore   : () -> Unit,
+) {
+    val gridState = rememberLazyGridState()
+
+    // Trigger loadMore when close to the end of the list
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo  = gridState.layoutInfo
+            val totalItems  = layoutInfo.totalItemsCount
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisible >= totalItems - LOAD_MORE_THRESHOLD
+        }
+    }
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
+    }
+
+    LazyVerticalGrid(
+        columns     = GridCells.Fixed(3),
+        state       = gridState,
+        modifier    = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement   = Arrangement.spacedBy(2.dp),
+    ) {
+        itemsIndexed(photos, key = { _, p -> p.id }) { index, photo ->
+            PhotoThumbnail(
+                photo    = photo,
+                onClick  = { onPhotoClick(index) },
+            )
+        }
+
+        // Loading indicator at the bottom
+        if (isLoadingMore) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoThumbnail(
+    photo  : Photo,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AsyncImage(
+        model              = photo.imageUrl,
+        contentDescription = photo.caption,
+        contentScale       = ContentScale.Crop,
+        modifier           = modifier
+            .aspectRatio(1f)
+            .clickable(onClick = onClick),
+    )
 }
