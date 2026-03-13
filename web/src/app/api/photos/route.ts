@@ -127,6 +127,65 @@ export async function GET(request: Request) {
 }
 
 /**
+ * PATCH /api/photos — update caption and/or tags for a DB photo.
+ * Body: { id: string, caption?: string | null, tags?: string[] }
+ * Requires auth; user must own the photo. [SQ.S-W-2603-0054]
+ */
+export async function PATCH(request: Request) {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  let body: { id?: string; caption?: string | null; tags?: string[] }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const { id: photoId, caption, tags } = body
+
+  if (!photoId) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
+  }
+
+  // Verify ownership before updating
+  const { data: photo, error: fetchError } = await (supabase
+    .from('photos') as ReturnType<typeof supabase.from>)
+    .select('id, user_id')
+    .eq('id', photoId)
+    .single() as { data: { id: string; user_id: string } | null; error: unknown }
+
+  if (fetchError || !photo) {
+    return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
+  if (photo.user_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (caption !== undefined) updates.caption = caption || null
+  if (tags !== undefined) updates.tags = tags
+
+  const { data: updated, error: updateError } = await (supabase
+    .from('photos') as ReturnType<typeof supabase.from>)
+    .update(updates)
+    .eq('id', photoId)
+    .select()
+    .single()
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ photo: updated })
+}
+
+/**
  * DELETE /api/photos — delete a photo by ID.
  * Query params: id (required) — the photo UUID
  * Requires auth; user must own the photo.

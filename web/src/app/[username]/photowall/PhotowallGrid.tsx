@@ -18,6 +18,7 @@ interface UnifiedPost {
   caption: string | null;
   date: string | null;
   source: "db" | "archive";
+  tags: string[] | null;
 }
 
 interface PhotowallGridProps {
@@ -36,6 +37,7 @@ function archiveToUnified(): UnifiedPost[] {
     caption: p.caption || null,
     date: p.date || null,
     source: "archive",
+    tags: null,
   }));
 }
 
@@ -65,12 +67,13 @@ export default function PhotowallGrid({ userId, username, isOwner }: PhotowallGr
         if (!res.ok) throw new Error();
         const data = await res.json();
         const mapped: UnifiedPost[] = (data.photos ?? []).map(
-          (p: { id: string; image_urls: string[]; caption: string | null; date: string | null }) => ({
+          (p: { id: string; image_urls: string[]; caption: string | null; date: string | null; tags: string[] | null }) => ({
             id: `db_${p.id}`,
             imageUrls: p.image_urls,
             caption: p.caption,
             date: p.date,
             source: "db" as const,
+            tags: p.tags || null,
           })
         );
         setDbPhotos(mapped);
@@ -104,12 +107,13 @@ export default function PhotowallGrid({ userId, username, isOwner }: PhotowallGr
         if (!res.ok) throw new Error();
         const data = await res.json();
         const mapped: UnifiedPost[] = (data.photos ?? []).map(
-          (p: { id: string; image_urls: string[]; caption: string | null; date: string | null }) => ({
+          (p: { id: string; image_urls: string[]; caption: string | null; date: string | null; tags: string[] | null }) => ({
             id: `db_${p.id}`,
             imageUrls: p.image_urls,
             caption: p.caption,
             date: p.date,
             source: "db" as const,
+            tags: p.tags || null,
           })
         );
         setDbPhotos((prev) => [...prev, ...mapped]);
@@ -134,10 +138,12 @@ export default function PhotowallGrid({ userId, username, isOwner }: PhotowallGr
     return () => obs.disconnect();
   }, [loadMore]);
 
-  // Keyboard nav for lightbox
+  // Keyboard nav — skip if focus is inside an input or textarea
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (!selected) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
       if (e.key === "Escape") setSelected(null);
       if (e.key === "ArrowLeft") {
         const idx = displayed.findIndex((p) => p.id === selected.id);
@@ -168,10 +174,16 @@ export default function PhotowallGrid({ userId, username, isOwner }: PhotowallGr
     if (post.source !== "db") return;
     const photoId = post.id.replace("db_", "");
     const res = await fetch(`/api/photos?id=${photoId}`, { method: "DELETE" });
-    if (!res.ok) return; // silently ignore; production would show an error toast
+    if (!res.ok) return;
     setDbPhotos((prev) => prev.filter((p) => p.id !== post.id));
     setDbTotal((prev) => Math.max(0, prev - 1));
     setSelected(null);
+  };
+
+  // Edit a DB photo caption + tags — updates local state [SQ.S-W-2603-0054]
+  const handleEdit = (updatedPost: UnifiedPost) => {
+    setDbPhotos((prev) => prev.map((p) => p.id === updatedPost.id ? updatedPost : p));
+    setSelected(updatedPost);
   };
 
   return (
@@ -241,6 +253,7 @@ export default function PhotowallGrid({ userId, username, isOwner }: PhotowallGr
           onClose={() => setSelected(null)}
           isOwner={isOwner}
           onDelete={handleDelete}
+          onEdit={handleEdit}
           onPrev={() => {
             const idx = displayed.findIndex((p) => p.id === selected.id);
             if (idx > 0) { setSelected(displayed[idx - 1]); setCarouselIdx(0); }
@@ -263,6 +276,7 @@ function Lightbox({
   onClose,
   isOwner,
   onDelete,
+  onEdit,
   onPrev,
   onNext,
 }: {
@@ -273,10 +287,15 @@ function Lightbox({
   onClose: () => void;
   isOwner: boolean;
   onDelete: (post: UnifiedPost) => void;
+  onEdit: (post: UnifiedPost) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const currentImage = post.imageUrls[carouselIdx] || post.imageUrls[0];
   const hasMultiple = post.imageUrls.length > 1;
   const postDate = post.date
@@ -285,6 +304,25 @@ function Lightbox({
       })
     : "";
   const idx = displayed.findIndex((p) => p.id === post.id);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  // Reset panel state when switching posts
+  useEffect(() => {
+    setEditing(false);
+    setMenuOpen(false);
+    setConfirmDelete(false);
+  }, [post.id]);
 
   return (
     <div
@@ -296,6 +334,7 @@ function Lightbox({
         style={{ boxShadow: "6px 6px 0 rgba(0,0,0,0.3)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ── Image pane ── */}
         <div className="relative flex-1 min-h-[300px] md:min-h-[500px] bg-ink/5 flex items-center justify-center">
           <Image
             src={currentImage}
@@ -338,43 +377,87 @@ function Lightbox({
             title="Next post">→</button>
         </div>
 
-        <div className="md:w-[280px] border-t-3 md:border-t-0 md:border-l-3 border-ink p-5 overflow-y-auto max-h-[200px] md:max-h-none">
-          <button onClick={onClose}
-            className="absolute top-2 right-2 w-8 h-8 bg-bg border-3 border-ink flex items-center justify-center font-head font-bold text-sm cursor-pointer hover:bg-ink hover:text-bg z-10">
-            ✕
-          </button>
+        {/* ── Side panel ── */}
+        <div className="md:w-[280px] border-t-3 md:border-t-0 md:border-l-3 border-ink px-5 pb-5 pt-5 md:pt-12 overflow-y-auto max-h-[200px] md:max-h-none flex flex-col">
 
-          {postDate && (
-            <p className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50 mb-3">{postDate}</p>
-          )}
-
-          {post.caption ? (
-            <p className="font-body text-[0.85rem] leading-relaxed whitespace-pre-line">{post.caption}</p>
-          ) : (
-            <p className="font-mono text-[0.75rem] opacity-30 italic">No caption</p>
-          )}
-
-          {hasMultiple && (
-            <p className="font-mono text-[0.65rem] opacity-40 mt-4">
-              {carouselIdx + 1} of {post.imageUrls.length} photos
-            </p>
-          )}
-
-          {/* Delete button — owner only, DB photos only [SQ.S-W-2603-0053] */}
-          {isOwner && post.source === "db" && (
-            <div className="mt-6 pt-4 border-t-2 border-ink/10">
-              {!confirmDelete ? (
+          {/* Top-right action buttons: burger menu (owner + DB) + close */}
+          <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
+            {isOwner && post.source === "db" && (
+              <div className="relative" ref={menuRef}>
                 <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-2 font-mono text-[0.72rem] text-red-500 border-2 border-red-300 px-3 py-1.5 cursor-pointer hover:bg-red-50 transition-colors w-full justify-center"
-                  title="Delete this photo"
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="w-8 h-8 bg-bg border-3 border-ink flex items-center justify-center cursor-pointer hover:bg-ink hover:text-bg"
+                  title="More options"
                 >
-                  <TrashIcon />
-                  Delete photo
+                  <DotsIcon />
                 </button>
+                {menuOpen && (
+                  <div
+                    className="absolute top-full right-0 mt-1 bg-bg border-3 border-ink w-48"
+                    style={{ boxShadow: "3px 3px 0 var(--ink)" }}
+                  >
+                    <button
+                      onClick={() => { setMenuOpen(false); setEditing(true); setConfirmDelete(false); }}
+                      className="w-full text-left px-3 py-2.5 font-mono text-[0.72rem] hover:bg-ink/5 flex items-center gap-2 cursor-pointer"
+                    >
+                      <PencilIcon /> Edit caption &amp; tags
+                    </button>
+                    <div className="border-t border-ink/10" />
+                    <button
+                      onClick={() => { setMenuOpen(false); setConfirmDelete(true); setEditing(false); }}
+                      className="w-full text-left px-3 py-2.5 font-mono text-[0.72rem] text-red-500 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                    >
+                      <TrashIcon /> Delete photo
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 bg-bg border-3 border-ink flex items-center justify-center font-head font-bold text-sm cursor-pointer hover:bg-ink hover:text-bg"
+            >✕</button>
+          </div>
+
+          {/* Panel content — edit mode or normal view */}
+          {editing ? (
+            <EditPanel
+              post={post}
+              onSave={(updated) => { onEdit(updated); setEditing(false); }}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <>
+              {postDate && (
+                <p className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50 mb-3">{postDate}</p>
+              )}
+
+              {post.caption ? (
+                <p className="font-body text-[0.85rem] leading-relaxed whitespace-pre-line">{post.caption}</p>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <p className="font-mono text-[0.65rem] opacity-60 text-center">Are you sure?</p>
+                <p className="font-mono text-[0.75rem] opacity-30 italic">No caption</p>
+              )}
+
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {post.tags.map((tag) => (
+                    <span key={tag} className="font-mono text-[0.62rem] border border-ink/30 px-2 py-0.5 opacity-60">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {hasMultiple && (
+                <p className="font-mono text-[0.65rem] opacity-40 mt-4">
+                  {carouselIdx + 1} of {post.imageUrls.length} photos
+                </p>
+              )}
+
+              {/* Delete confirmation — shown after selecting Delete from menu */}
+              {confirmDelete && (
+                <div className="mt-auto pt-4 border-t-2 border-ink/10">
+                  <p className="font-mono text-[0.65rem] opacity-60 text-center mb-2">Delete this photo?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => { onDelete(post); setConfirmDelete(false); }}
@@ -391,13 +474,97 @@ function Lightbox({
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
     </div>
   );
 }
+
+/** Edit panel — replaces side panel content when editing caption/tags [SQ.S-W-2603-0054] */
+function EditPanel({
+  post,
+  onSave,
+  onCancel,
+}: {
+  post: UnifiedPost;
+  onSave: (updated: UnifiedPost) => void;
+  onCancel: () => void;
+}) {
+  const [caption, setCaption] = useState(post.caption || "");
+  const [tagsInput, setTagsInput] = useState((post.tags || []).join(", "));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    const photoId = post.id.replace("db_", "");
+    const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/photos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: photoId, caption: caption || null, tags }),
+      });
+      if (!res.ok) throw new Error();
+      onSave({ ...post, caption: caption || null, tags: tags.length ? tags : null });
+    } catch {
+      setError("Failed to save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <label className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50 mb-1.5 block">
+          Caption
+        </label>
+        <textarea
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          rows={5}
+          className="w-full border-2 border-ink/30 focus:border-ink p-2 font-body text-[0.85rem] resize-none outline-none bg-bg"
+          placeholder="Add a caption…"
+        />
+      </div>
+      <div>
+        <label className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50 mb-1.5 block">
+          Tags
+        </label>
+        <input
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          className="w-full border-2 border-ink/30 focus:border-ink p-2 font-mono text-[0.75rem] outline-none bg-bg"
+          placeholder="tag1, tag2, tag3"
+        />
+        <p className="font-mono text-[0.6rem] opacity-30 mt-1">Comma-separated</p>
+      </div>
+      {error && <p className="font-mono text-[0.65rem] text-red-500">{error}</p>}
+      <div className="flex gap-2 pt-2 border-t-2 border-ink/10">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 font-mono text-[0.72rem] bg-ink text-bg border-2 border-ink px-3 py-1.5 cursor-pointer hover:opacity-80 disabled:opacity-40"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={saving}
+          className="flex-1 font-mono text-[0.72rem] border-2 border-ink/20 px-3 py-1.5 cursor-pointer hover:bg-ink/5 disabled:opacity-40"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Icons ──
 
 function TrashIcon() {
   return (
@@ -406,6 +573,25 @@ function TrashIcon() {
       <path d="M19 6l-1 14H6L5 6" />
       <path d="M10 11v6M14 11v6" />
       <path d="M9 6V4h6v2" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
     </svg>
   );
 }
