@@ -5,13 +5,14 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import me.sidequest.app.ui.screens.EditProfileScreen
 import me.sidequest.app.ui.screens.FeedScreen
 import me.sidequest.app.ui.screens.LoginScreen
 import me.sidequest.app.ui.screens.PhotowallScreen
 import me.sidequest.app.ui.screens.ProfileScreen
 import me.sidequest.app.ui.screens.WritingsScreen
 
-// [SQ.M-A-2603-0021]
+// [SQ.M-A-2603-0021] [SQ.M-A-2603-0024]
 
 @Composable
 fun SideQuestNavHost(
@@ -34,7 +35,16 @@ fun SideQuestNavHost(
         }
 
         composable(Screen.Profile.route) {
-            ProfileScreen()
+            ProfileScreen(
+                onEditProfile = { navController.navigate(Screen.EditProfile.route) },
+            )
+        }
+
+        composable(Screen.EditProfile.route) {
+            EditProfileScreen(
+                onSaved = { navController.popBackStack() },
+                onBack  = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.Photowall.route) {
@@ -52,9 +62,10 @@ fun SideQuestNavHost(
 }
 
 sealed class Screen(val route: String) {
-    data object Login    : Screen("login")
-    data object Profile  : Screen("profile")
-    data object Photowall: Screen("photowall")
-    data object Writings : Screen("writings")
-    data object Feed     : Screen("feed")
+    data object Login       : Screen("login")
+    data object Profile     : Screen("profile")
+    data object EditProfile : Screen("edit_profile")
+    data object Photowall   : Screen("photowall")
+    data object Writings    : Screen("writings")
+    data object Feed        : Screen("feed")
 }
