@@ -34,6 +34,7 @@ val routesWithoutNav = setOf(
     Screen.Login.route,
     Screen.EditProfile.route,
     Screen.Lightbox.route,
+    Screen.WritingDetail.route,
 )
 
 @Composable

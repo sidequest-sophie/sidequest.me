@@ -11,9 +11,10 @@ import me.sidequest.app.ui.screens.LightboxScreen
 import me.sidequest.app.ui.screens.LoginScreen
 import me.sidequest.app.ui.screens.PhotowallScreen
 import me.sidequest.app.ui.screens.ProfileScreen
+import me.sidequest.app.ui.screens.WritingDetailScreen
 import me.sidequest.app.ui.screens.WritingsScreen
 
-// [SQ.M-A-2603-0021] [SQ.M-A-2603-0024] [SQ.M-A-2603-0027]
+// [SQ.M-A-2603-0021] [SQ.M-A-2603-0024] [SQ.M-A-2603-0027] [SQ.M-A-2603-0029] [SQ.M-A-2603-0030]
 
 @Composable
 fun SideQuestNavHost(
@@ -70,7 +71,22 @@ fun SideQuestNavHost(
         }
 
         composable(Screen.Writings.route) {
-            WritingsScreen()
+            WritingsScreen(
+                onWritingClick = { id ->
+                    navController.navigate(Screen.WritingDetail.routeFor(id))
+                },
+            )
+        }
+
+        composable(
+            route     = Screen.WritingDetail.route,
+            arguments = listOf(androidx.navigation.navArgument("id") {
+                type = androidx.navigation.NavType.StringType
+            }),
+        ) {
+            WritingDetailScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.Feed.route) {
@@ -87,6 +103,9 @@ sealed class Screen(val route: String) {
     data object Lightbox    : Screen("lightbox/{index}") {
         fun routeFor(index: Int) = "lightbox/$index"
     }
-    data object Writings    : Screen("writings")
-    data object Feed        : Screen("feed")
+    data object Writings      : Screen("writings")
+    data object WritingDetail : Screen("writing/{id}") {
+        fun routeFor(id: String) = "writing/$id"
+    }
+    data object Feed          : Screen("feed")
 }
