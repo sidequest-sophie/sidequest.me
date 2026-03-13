@@ -17,27 +17,33 @@ import me.sidequest.app.data.model.Profile
 import me.sidequest.app.data.repository.ProfileRepository
 import javax.inject.Inject
 
-// [SQ.M-A-2603-0024]
+// [SQ.M-A-2603-0024] [SQ.M-A-2603-0025]
 
 sealed interface EditProfileState {
     data object Loading   : EditProfileState
     data object Saving    : EditProfileState
     data object Saved     : EditProfileState
     data class  Ready(
-        val displayName : String,
-        val bio         : String,
-        val avatarUrl   : String,
+        val displayName  : String,
+        val bio          : String,
+        val avatarUrl    : String,
         /** Local URI selected from the photo picker — not yet uploaded. */
-        val pendingAvatar: Uri? = null,
+        val pendingAvatar : Uri? = null,
+        val tickerItems  : List<String> = emptyList(),
+        val tickerEnabled: Boolean = true,
+        /** Draft text for a new ticker item being typed. */
+        val newTickerItem: String = "",
     ) : EditProfileState
     data class Error(val message: String) : EditProfileState
 }
 
 @Serializable
 private data class ProfileUpdate(
-    @SerialName("display_name") val displayName: String?,
-    val bio: String?,
-    @SerialName("avatar_url")   val avatarUrl: String?,
+    @SerialName("display_name")  val displayName  : String?,
+    val bio                                        : String?,
+    @SerialName("avatar_url")    val avatarUrl     : String?,
+    @SerialName("ticker_items")  val tickerItems   : List<String>?,
+    @SerialName("ticker_enabled") val tickerEnabled: Boolean?,
 )
 
 @HiltViewModel
@@ -64,9 +70,11 @@ class EditProfileViewModel @Inject constructor(
             val profile = repository.getProfileById(userId)
             _state.value = if (profile != null) {
                 EditProfileState.Ready(
-                    displayName  = profile.displayName ?: "",
-                    bio          = profile.bio         ?: "",
-                    avatarUrl    = profile.avatarUrl   ?: "",
+                    displayName   = profile.displayName  ?: "",
+                    bio           = profile.bio          ?: "",
+                    avatarUrl     = profile.avatarUrl    ?: "",
+                    tickerItems   = profile.tickerItems  ?: emptyList(),
+                    tickerEnabled = profile.tickerEnabled ?: true,
                 )
             } else {
                 EditProfileState.Error("Profile not found")
@@ -88,6 +96,31 @@ class EditProfileViewModel @Inject constructor(
     fun onAvatarPicked(uri: Uri) {
         val s = _state.value
         if (s is EditProfileState.Ready) _state.value = s.copy(pendingAvatar = uri)
+    }
+
+    fun onTickerEnabledChange(enabled: Boolean) {
+        val s = _state.value
+        if (s is EditProfileState.Ready) _state.value = s.copy(tickerEnabled = enabled)
+    }
+
+    fun onNewTickerItemChange(value: String) {
+        val s = _state.value
+        if (s is EditProfileState.Ready) _state.value = s.copy(newTickerItem = value)
+    }
+
+    fun addTickerItem() {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        val trimmed = s.newTickerItem.trim()
+        if (trimmed.isBlank()) return
+        _state.value = s.copy(
+            tickerItems   = s.tickerItems + trimmed,
+            newTickerItem = "",
+        )
+    }
+
+    fun removeTickerItem(index: Int) {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        _state.value = s.copy(tickerItems = s.tickerItems.toMutableList().also { it.removeAt(index) })
     }
 
     /**
@@ -115,9 +148,11 @@ class EditProfileViewModel @Inject constructor(
             runCatching {
                 supabase.postgrest["profiles"].update(
                     ProfileUpdate(
-                        displayName = s.displayName.trim().ifBlank { null },
-                        bio         = s.bio.trim().ifBlank { null },
-                        avatarUrl   = avatarUrl.ifBlank { null },
+                        displayName   = s.displayName.trim().ifBlank { null },
+                        bio           = s.bio.trim().ifBlank { null },
+                        avatarUrl     = avatarUrl.ifBlank { null },
+                        tickerItems   = s.tickerItems.ifEmpty { null },
+                        tickerEnabled = s.tickerEnabled,
                     )
                 ) {
                     filter { eq("id", userId) }

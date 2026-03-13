@@ -4,8 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,11 +21,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import me.sidequest.app.ui.components.TickerCarousel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,7 +87,6 @@ fun ProfileScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProfileContent(
     profile: Profile,
@@ -155,22 +152,14 @@ private fun ProfileContent(
             )
         }
 
-        // ── Ticker items ──────────────────────────────────────────────────
-        // TODO [SQ.M-A-2603-0025]: Replace with animated ticker carousel composable
+        // ── Ticker carousel ───────────────────────────────────────────────
         val items = profile.tickerItems
         if (profile.tickerEnabled == true && !items.isNullOrEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            TickerCarousel(
+                items    = items,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                items.forEach { item ->
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(item) },
-                    )
-                }
-            }
+            )
         }
 
         // TODO [SQ.M-A-2603-0033]: Site tags chips

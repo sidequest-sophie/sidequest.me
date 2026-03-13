@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,14 +18,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -43,25 +50,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import me.sidequest.app.ui.editprofile.EditProfileState
 import me.sidequest.app.ui.editprofile.EditProfileViewModel
 
-// [SQ.M-A-2603-0024]
+// [SQ.M-A-2603-0024] [SQ.M-A-2603-0025]
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
-    onSaved : () -> Unit = {},
-    onBack  : () -> Unit = {},
+    onSaved  : () -> Unit = {},
+    onBack   : () -> Unit = {},
     viewModel: EditProfileViewModel = hiltViewModel(),
 ) {
-    val state   by viewModel.state.collectAsState()
-    val snackbar = remember { SnackbarHostState() }
+    val state    by viewModel.state.collectAsState()
+    val snackbar  = remember { SnackbarHostState() }
 
-    // Navigate back once save completes
     LaunchedEffect(state) {
         if (state is EditProfileState.Saved) onSaved()
         if (state is EditProfileState.Error) {
@@ -69,12 +76,9 @@ fun EditProfileScreen(
         }
     }
 
-    // Photo picker launcher (Android 13+ PickVisualMedia)
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
-    ) { uri: Uri? ->
-        if (uri != null) viewModel.onAvatarPicked(uri)
-    }
+    ) { uri: Uri? -> if (uri != null) viewModel.onAvatarPicked(uri) }
 
     Scaffold(
         topBar = {
@@ -92,57 +96,56 @@ fun EditProfileScreen(
         when (val s = state) {
             is EditProfileState.Loading, EditProfileState.Saving -> {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
                     contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
+                ) { CircularProgressIndicator() }
             }
 
             is EditProfileState.Error -> {
-                // Error is surfaced via snackbar; show nothing extra in body
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                )
+                Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
             }
 
             EditProfileState.Saved -> {
-                // LaunchedEffect handles navigation; blank while popping
                 Box(modifier = Modifier.fillMaxSize())
             }
 
             is EditProfileState.Ready -> {
                 EditProfileForm(
-                    state    = s,
-                    isSaving = false,
+                    state               = s,
+                    isSaving            = false,
                     onDisplayNameChange = viewModel::onDisplayNameChange,
                     onBioChange         = viewModel::onBioChange,
-                    onPickAvatar = {
+                    onPickAvatar        = {
                         photoPicker.launch(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     },
-                    onSave   = viewModel::save,
-                    modifier = Modifier.padding(innerPadding),
+                    onTickerEnabledChange  = viewModel::onTickerEnabledChange,
+                    onNewTickerItemChange  = viewModel::onNewTickerItemChange,
+                    onAddTickerItem        = viewModel::addTickerItem,
+                    onRemoveTickerItem     = viewModel::removeTickerItem,
+                    onSave               = viewModel::save,
+                    modifier             = Modifier.padding(innerPadding),
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditProfileForm(
-    state              : EditProfileState.Ready,
-    isSaving           : Boolean,
-    onDisplayNameChange: (String) -> Unit,
-    onBioChange        : (String) -> Unit,
-    onPickAvatar       : () -> Unit,
-    onSave             : () -> Unit,
-    modifier           : Modifier = Modifier,
+    state                 : EditProfileState.Ready,
+    isSaving              : Boolean,
+    onDisplayNameChange   : (String) -> Unit,
+    onBioChange           : (String) -> Unit,
+    onPickAvatar          : () -> Unit,
+    onTickerEnabledChange : (Boolean) -> Unit,
+    onNewTickerItemChange : (String) -> Unit,
+    onAddTickerItem       : () -> Unit,
+    onRemoveTickerItem    : (Int) -> Unit,
+    onSave                : () -> Unit,
+    modifier              : Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -166,9 +169,7 @@ private fun EditProfileForm(
                     model = displayUri,
                     contentDescription = "Avatar",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape),
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
                 )
             } else {
                 Box(
@@ -185,8 +186,6 @@ private fun EditProfileForm(
                     )
                 }
             }
-
-            // Camera overlay badge
             Box(
                 modifier = Modifier
                     .size(28.dp)
@@ -223,6 +222,82 @@ private fun EditProfileForm(
             maxLines      = 6,
             modifier      = Modifier.fillMaxWidth(),
         )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── Ticker ────────────────────────────────────────────────────────
+        Text(
+            text  = "Ticker",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text  = "Show ticker on profile",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Switch(
+                checked         = state.tickerEnabled,
+                onCheckedChange = onTickerEnabledChange,
+            )
+        }
+
+        // Existing items
+        if (state.tickerItems.isNotEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                state.tickerItems.forEachIndexed { index, item ->
+                    FilterChip(
+                        selected       = false,
+                        onClick        = {},
+                        label          = { Text(item) },
+                        trailingIcon   = {
+                            IconButton(
+                                onClick  = { onRemoveTickerItem(index) },
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = "Remove",
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
+        // Add new item
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value         = state.newTickerItem,
+                onValueChange = onNewTickerItemChange,
+                label         = { Text("Add item…") },
+                singleLine    = true,
+                modifier      = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onAddTickerItem() }),
+            )
+            IconButton(
+                onClick  = onAddTickerItem,
+                enabled  = state.newTickerItem.isNotBlank(),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add ticker item")
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
