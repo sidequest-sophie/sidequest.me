@@ -1,6 +1,8 @@
 [versions]
 agp = "8.6.0"
 kotlin = "2.0.21"
+google-services = "4.4.2"
+firebase-bom = "33.7.0"
 composeCompiler = "1.5.14"
 supabase = "2.6.1"
 ktor = "2.3.12"
@@ -67,6 +69,10 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 # Image Loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
+# Firebase / FCM [SQ.M-A-2603-0032]
+firebase-bom      = { group = "com.google.firebase", name = "firebase-bom",       version.ref = "firebase-bom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging-ktx" }
+
 # Supabase [SQ.M-A-2603-0022]
 supabase-bom      = { group = "io.github.jan-tennert.supabase", name = "bom",          version.ref = "supabase" }
 supabase-auth     = { group = "io.github.jan-tennert.supabase", name = "auth-kt" }
@@ -84,3 +90,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }

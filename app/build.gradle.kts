@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -97,6 +98,10 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+
+    // Firebase / FCM [SQ.M-A-2603-0032]
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Supabase [SQ.M-A-2603-0022]
     implementation(platform(libs.supabase.bom))

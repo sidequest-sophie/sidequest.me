@@ -1,5 +1,7 @@
 package me.sidequest.app.auth
 
+// [SQ.M-A-2603-0022] [SQ.M-A-2603-0032]
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,12 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import me.sidequest.app.data.repository.FcmTokenRepository
 import javax.inject.Inject
 
-// [SQ.M-A-2603-0022]
-
 sealed interface AuthState {
-    data object Loading     : AuthState
+    data object Loading         : AuthState
     data object Unauthenticated : AuthState
     data class  Authenticated(val userId: String) : AuthState
     data class  Error(val message: String) : AuthState
@@ -26,17 +27,28 @@ sealed interface AuthState {
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val supabase: SupabaseClient,
+    private val supabase         : SupabaseClient,
+    private val fcmTokenRepository: FcmTokenRepository,
 ) : ViewModel() {
 
     /** Mirrors the Supabase SDK session status as AuthState. */
     val authState: StateFlow<AuthState> = supabase.auth.sessionStatus
         .map { status ->
             when (status) {
-                is SessionStatus.Authenticated ->
+                is SessionStatus.Authenticated -> {
+                    // Register/refresh the FCM token whenever a valid session is established
+                    viewModelScope.launch {
+                        runCatching { fcmTokenRepository.registerToken() }
+                    }
                     AuthState.Authenticated(status.session.user?.id ?: "")
-                is SessionStatus.NotAuthenticated ->
+                }
+                is SessionStatus.NotAuthenticated -> {
+                    // Clear the FCM token from the profile on sign-out
+                    viewModelScope.launch {
+                        runCatching { fcmTokenRepository.clearToken() }
+                    }
                     AuthState.Unauthenticated
+                }
                 is SessionStatus.LoadingFromStorage ->
                     AuthState.Loading
                 is SessionStatus.NetworkError ->
@@ -44,20 +56,15 @@ class AuthViewModel @Inject constructor(
             }
         }
         .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = AuthState.Loading,
+            scope         = viewModelScope,
+            started       = SharingStarted.WhileSubscribed(5_000),
+            initialValue  = AuthState.Loading,
         )
 
     /** Opens Google OAuth in a browser; app receives token via deep link. */
     fun signInWithGoogle() {
         viewModelScope.launch {
-            runCatching {
-                supabase.auth.signInWith(Google)
-            }.onFailure { e ->
-                // AuthState.Error surfaced via sessionStatus — no extra handling needed here
-                // but we could expose a one-shot error event if needed in future
-            }
+            runCatching { supabase.auth.signInWith(Google) }
         }
     }
 
