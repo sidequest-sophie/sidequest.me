@@ -1,21 +1,178 @@
 package me.sidequest.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import me.sidequest.app.data.model.Profile
+import me.sidequest.app.ui.profile.ProfileState
+import me.sidequest.app.ui.profile.ProfileViewModel
+
+// [SQ.M-A-2603-0023]
 
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    onEditProfile: () -> Unit = {},
+    viewModel: ProfileViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsState()
+
+    Scaffold(
+        floatingActionButton = {
+            if (state is ProfileState.Success && (state as ProfileState.Success).isOwner) {
+                SmallFloatingActionButton(onClick = onEditProfile) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
+                }
+            }
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            when (val s = state) {
+                is ProfileState.Loading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+
+                is ProfileState.Error -> {
+                    Text(
+                        text = s.message,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 24.dp),
+                    )
+                }
+
+                is ProfileState.Success -> {
+                    ProfileContent(
+                        profile = s.profile,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProfileContent(
+    profile: Profile,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = Modifier
-            .fillMaxSize(),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Profile")
+        // ── Avatar ────────────────────────────────────────────────────────
+        if (!profile.avatarUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = profile.avatarUrl,
+                contentDescription = "Avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── Name & handle ─────────────────────────────────────────────────
+        if (!profile.displayName.isNullOrBlank()) {
+            Text(
+                text = profile.displayName,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Text(
+            text = "@${profile.username}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // ── Bio ───────────────────────────────────────────────────────────
+        if (!profile.bio.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = profile.bio,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        // ── Ticker items ──────────────────────────────────────────────────
+        // TODO [SQ.M-A-2603-0025]: Replace with animated ticker carousel composable
+        val items = profile.tickerItems
+        if (profile.tickerEnabled == true && !items.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items.forEach { item ->
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text(item) },
+                    )
+                }
+            }
+        }
+
+        // TODO [SQ.M-A-2603-0033]: Site tags chips
     }
 }
