@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +19,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +44,7 @@ import me.sidequest.app.data.model.Profile
 import me.sidequest.app.ui.profile.ProfileState
 import me.sidequest.app.ui.profile.ProfileViewModel
 
-// [SQ.M-A-2603-0023]
+// [SQ.M-A-2603-0023] [SQ.M-A-2603-0026]
 
 @Composable
 fun ProfileScreen(
@@ -87,6 +93,7 @@ fun ProfileScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProfileContent(
     profile: Profile,
@@ -160,6 +167,69 @@ private fun ProfileContent(
                 items    = items,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+
+        // ── Likes & Dislikes ──────────────────────────────────────────────
+        val likes    = profile.likes
+        val dislikes = profile.dislikes
+        if (!likes.isNullOrEmpty() || !dislikes.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (!likes.isNullOrEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ThumbUp,
+                        contentDescription = "Likes",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text  = "Likes",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    likes.forEach { item ->
+                        AssistChip(onClick = {}, label = { Text(item) })
+                    }
+                }
+            }
+
+            if (!dislikes.isNullOrEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ThumbDown,
+                        contentDescription = "Dislikes",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text  = "Dislikes",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    dislikes.forEach { item ->
+                        AssistChip(onClick = {}, label = { Text(item) })
+                    }
+                }
+            }
         }
 
         // TODO [SQ.M-A-2603-0033]: Site tags chips

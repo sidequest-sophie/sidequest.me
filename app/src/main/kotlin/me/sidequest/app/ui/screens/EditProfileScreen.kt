@@ -124,6 +124,12 @@ fun EditProfileScreen(
                     onNewTickerItemChange  = viewModel::onNewTickerItemChange,
                     onAddTickerItem        = viewModel::addTickerItem,
                     onRemoveTickerItem     = viewModel::removeTickerItem,
+                    onNewLikeChange        = viewModel::onNewLikeChange,
+                    onAddLike              = viewModel::addLike,
+                    onRemoveLike           = viewModel::removeLike,
+                    onNewDislikeChange     = viewModel::onNewDislikeChange,
+                    onAddDislike           = viewModel::addDislike,
+                    onRemoveDislike        = viewModel::removeDislike,
                     onSave               = viewModel::save,
                     modifier             = Modifier.padding(innerPadding),
                 )
@@ -144,6 +150,12 @@ private fun EditProfileForm(
     onNewTickerItemChange : (String) -> Unit,
     onAddTickerItem       : () -> Unit,
     onRemoveTickerItem    : (Int) -> Unit,
+    onNewLikeChange       : (String) -> Unit,
+    onAddLike             : () -> Unit,
+    onRemoveLike          : (Int) -> Unit,
+    onNewDislikeChange    : (String) -> Unit,
+    onAddDislike          : () -> Unit,
+    onRemoveDislike       : (Int) -> Unit,
     onSave                : () -> Unit,
     modifier              : Modifier = Modifier,
 ) {
@@ -299,6 +311,40 @@ private fun EditProfileForm(
             }
         }
 
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── Likes ─────────────────────────────────────────────────────────
+        Text(
+            text  = "Likes",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        LikeDislikeEditor(
+            items           = state.likes,
+            newItem         = state.newLike,
+            onNewItemChange = onNewLikeChange,
+            onAdd           = onAddLike,
+            onRemove        = onRemoveLike,
+            placeholder     = "Add something you like…",
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── Dislikes ──────────────────────────────────────────────────────
+        Text(
+            text  = "Dislikes",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        LikeDislikeEditor(
+            items           = state.dislikes,
+            newItem         = state.newDislike,
+            onNewItemChange = onNewDislikeChange,
+            onAdd           = onAddDislike,
+            onRemove        = onRemoveDislike,
+            placeholder     = "Add something you dislike…",
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
@@ -307,6 +353,61 @@ private fun EditProfileForm(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Save")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LikeDislikeEditor(
+    items           : List<String>,
+    newItem         : String,
+    onNewItemChange : (String) -> Unit,
+    onAdd           : () -> Unit,
+    onRemove        : (Int) -> Unit,
+    placeholder     : String,
+    modifier        : Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (items.isNotEmpty()) {
+            items.forEachIndexed { index, item ->
+                FilterChip(
+                    selected     = false,
+                    onClick      = {},
+                    label        = { Text(item) },
+                    trailingIcon = {
+                        IconButton(
+                            onClick  = { onRemove(index) },
+                            modifier = Modifier.size(18.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value           = newItem,
+                onValueChange   = onNewItemChange,
+                label           = { Text(placeholder) },
+                singleLine      = true,
+                modifier        = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onAdd() }),
+            )
+            IconButton(onClick = onAdd, enabled = newItem.isNotBlank()) {
+                Icon(Icons.Filled.Add, contentDescription = "Add")
+            }
         }
     }
 }

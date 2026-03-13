@@ -17,33 +17,37 @@ import me.sidequest.app.data.model.Profile
 import me.sidequest.app.data.repository.ProfileRepository
 import javax.inject.Inject
 
-// [SQ.M-A-2603-0024] [SQ.M-A-2603-0025]
+// [SQ.M-A-2603-0024] [SQ.M-A-2603-0025] [SQ.M-A-2603-0026]
 
 sealed interface EditProfileState {
     data object Loading   : EditProfileState
     data object Saving    : EditProfileState
     data object Saved     : EditProfileState
     data class  Ready(
-        val displayName  : String,
-        val bio          : String,
-        val avatarUrl    : String,
-        /** Local URI selected from the photo picker — not yet uploaded. */
+        val displayName   : String,
+        val bio           : String,
+        val avatarUrl     : String,
         val pendingAvatar : Uri? = null,
-        val tickerItems  : List<String> = emptyList(),
-        val tickerEnabled: Boolean = true,
-        /** Draft text for a new ticker item being typed. */
-        val newTickerItem: String = "",
+        val tickerItems   : List<String> = emptyList(),
+        val tickerEnabled : Boolean = true,
+        val newTickerItem : String = "",
+        val likes         : List<String> = emptyList(),
+        val dislikes      : List<String> = emptyList(),
+        val newLike       : String = "",
+        val newDislike    : String = "",
     ) : EditProfileState
     data class Error(val message: String) : EditProfileState
 }
 
 @Serializable
 private data class ProfileUpdate(
-    @SerialName("display_name")  val displayName  : String?,
-    val bio                                        : String?,
-    @SerialName("avatar_url")    val avatarUrl     : String?,
-    @SerialName("ticker_items")  val tickerItems   : List<String>?,
-    @SerialName("ticker_enabled") val tickerEnabled: Boolean?,
+    @SerialName("display_name")   val displayName   : String?,
+    val bio                                          : String?,
+    @SerialName("avatar_url")     val avatarUrl      : String?,
+    @SerialName("ticker_items")   val tickerItems    : List<String>?,
+    @SerialName("ticker_enabled") val tickerEnabled  : Boolean?,
+    val likes                                        : List<String>?,
+    val dislikes                                     : List<String>?,
 )
 
 @HiltViewModel
@@ -70,11 +74,13 @@ class EditProfileViewModel @Inject constructor(
             val profile = repository.getProfileById(userId)
             _state.value = if (profile != null) {
                 EditProfileState.Ready(
-                    displayName   = profile.displayName  ?: "",
-                    bio           = profile.bio          ?: "",
-                    avatarUrl     = profile.avatarUrl    ?: "",
-                    tickerItems   = profile.tickerItems  ?: emptyList(),
+                    displayName   = profile.displayName   ?: "",
+                    bio           = profile.bio           ?: "",
+                    avatarUrl     = profile.avatarUrl     ?: "",
+                    tickerItems   = profile.tickerItems   ?: emptyList(),
                     tickerEnabled = profile.tickerEnabled ?: true,
+                    likes         = profile.likes         ?: emptyList(),
+                    dislikes      = profile.dislikes      ?: emptyList(),
                 )
             } else {
                 EditProfileState.Error("Profile not found")
@@ -123,6 +129,36 @@ class EditProfileViewModel @Inject constructor(
         _state.value = s.copy(tickerItems = s.tickerItems.toMutableList().also { it.removeAt(index) })
     }
 
+    fun onNewLikeChange(value: String) {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        _state.value = s.copy(newLike = value)
+    }
+    fun addLike() {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        val trimmed = s.newLike.trim()
+        if (trimmed.isBlank()) return
+        _state.value = s.copy(likes = s.likes + trimmed, newLike = "")
+    }
+    fun removeLike(index: Int) {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        _state.value = s.copy(likes = s.likes.toMutableList().also { it.removeAt(index) })
+    }
+
+    fun onNewDislikeChange(value: String) {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        _state.value = s.copy(newDislike = value)
+    }
+    fun addDislike() {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        val trimmed = s.newDislike.trim()
+        if (trimmed.isBlank()) return
+        _state.value = s.copy(dislikes = s.dislikes + trimmed, newDislike = "")
+    }
+    fun removeDislike(index: Int) {
+        val s = _state.value as? EditProfileState.Ready ?: return
+        _state.value = s.copy(dislikes = s.dislikes.toMutableList().also { it.removeAt(index) })
+    }
+
     /**
      * Saves text fields immediately. Avatar upload to Supabase Storage is a
      * TODO — requires a signed upload URL (via Edge Function per architecture decision).
@@ -153,6 +189,8 @@ class EditProfileViewModel @Inject constructor(
                         avatarUrl     = avatarUrl.ifBlank { null },
                         tickerItems   = s.tickerItems.ifEmpty { null },
                         tickerEnabled = s.tickerEnabled,
+                        likes         = s.likes.ifEmpty { null },
+                        dislikes      = s.dislikes.ifEmpty { null },
                     )
                 ) {
                     filter { eq("id", userId) }

@@ -3,7 +3,7 @@ package me.sidequest.app.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// [SQ.M-A-2603-0023]
+// [SQ.M-A-2603-0023] [SQ.M-A-2603-0026]
 
 /**
  * Mirrors the `profiles` Supabase table.
@@ -16,6 +16,8 @@ data class Profile(
     @SerialName("display_name")   val displayName: String?   = null,
     val bio: String?                                          = null,
     @SerialName("avatar_url")     val avatarUrl: String?     = null,
-    @SerialName("ticker_items")   val tickerItems: List<String>? = null,
-    @SerialName("ticker_enabled") val tickerEnabled: Boolean? = true,
+    @SerialName("ticker_items")   val tickerItems:    List<String>? = null,
+    @SerialName("ticker_enabled") val tickerEnabled:  Boolean?      = true,
+    val likes:                        List<String>?                 = null,
+    val dislikes:                     List<String>?                 = null,
 )
