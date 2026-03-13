@@ -15,7 +15,8 @@ import LikesDislikesEditor from "@/components/settings/LikesDislikesEditor";
 import TickerEditor from "@/components/settings/TickerEditor";
 import SiteTagsEditor from "@/components/settings/SiteTagsEditor";
 import type { Factoid, LikeDislike } from "@/types/profile-extras";
-import type { SiteTag } from "@/lib/tags";
+import type { SiteTag, SiteTagsDisplay } from "@/lib/tags";
+import { DEFAULT_SITE_TAGS_DISPLAY } from "@/lib/tags";
 
 const SETTINGS_TABS = ["Profile", "About", "Professional", "Site Tags"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -66,8 +67,11 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
   // ── Site Tags tab state ──
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [siteTags, setSiteTags] = useState<SiteTag[]>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((profile as any).site_tags as SiteTag[] | null) ?? []
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [siteTagsDisplay, setSiteTagsDisplay] = useState<SiteTagsDisplay>(
+    ((profile as any).site_tags_display as SiteTagsDisplay | null) ?? DEFAULT_SITE_TAGS_DISPLAY
   );
 
   // ── Shared save state ──
@@ -104,6 +108,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         ticker_enabled: tickerEnabled,
         ticker_items: tickerItems.length > 0 ? tickerItems : null,
         site_tags: siteTags.length > 0 ? siteTags : null,
+        site_tags_display: siteTagsDisplay,
         updated_at: new Date().toISOString(),
       };
 
@@ -359,10 +364,12 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
             Sticker-style tags shown on your profile home page. Each tag links
             to a filtered view of all your content with that tag.
           </p>
-          <div>
-            <div className={labelClass}>Tags</div>
-            <SiteTagsEditor tags={siteTags} onChange={setSiteTags} />
-          </div>
+          <SiteTagsEditor
+            tags={siteTags}
+            display={siteTagsDisplay}
+            onChange={setSiteTags}
+            onDisplayChange={setSiteTagsDisplay}
+          />
         </div>
       )}
 

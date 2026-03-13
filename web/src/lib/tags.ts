@@ -57,3 +57,54 @@ export const DEFAULT_SITE_TAGS: SiteTag[] = [
   { label: 'Cybersecurity', color: 'sticker-yellow' },
   { label: 'Side Projects', color: 'sticker-lilac'  },
 ]
+
+/** Maximum number of tags a profile can define. */
+export const MAX_SITE_TAGS = 50
+
+// ─── Display settings ────────────────────────────────────────────────────────
+
+export type SiteTagsDisplayMode = 'preference' | 'volume' | 'random'
+
+export interface SiteTagsDisplay {
+  /** How to order tags on the profile home page. */
+  mode: SiteTagsDisplayMode
+  /** How many tags to show. 0 = show all. */
+  limit: number
+}
+
+export const DEFAULT_SITE_TAGS_DISPLAY: SiteTagsDisplay = {
+  mode: 'preference',
+  limit: 0,
+}
+
+/**
+ * Apply display settings to a tag array.
+ * - 'preference': keep stored order (already sorted by user)
+ * - 'volume':     sort descending by photo count (pass volumeMap)
+ * - 'random':     Fisher-Yates shuffle
+ * Then trim to `display.limit` (0 = no trim).
+ */
+export function applyDisplaySettings(
+  tags: SiteTag[],
+  display: SiteTagsDisplay,
+  volumeMap?: Record<string, number>,
+): SiteTag[] {
+  let result = [...tags]
+
+  if (display.mode === 'volume' && volumeMap) {
+    result.sort((a, b) => (volumeMap[b.label] ?? 0) - (volumeMap[a.label] ?? 0))
+  } else if (display.mode === 'random') {
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[result[i], result[j]] = [result[j], result[i]]
+    }
+  }
+  // 'preference' keeps the stored array order
+
+  const limit = display.limit
+  if (limit > 0 && result.length > limit) {
+    result = result.slice(0, limit)
+  }
+
+  return result
+}

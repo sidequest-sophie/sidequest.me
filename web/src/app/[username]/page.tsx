@@ -4,7 +4,15 @@ import { posts } from "@/lib/photowall-data";
 import { photowallUrl } from "@/lib/cdn";
 import { buildFeed } from "@/lib/feed-data";
 import { getProfileByUsername, getCurrentUser } from "@/lib/profiles";
-import { type SiteTag, DEFAULT_SITE_TAGS, slugify } from "@/lib/tags";
+import {
+  type SiteTag,
+  type SiteTagsDisplay,
+  DEFAULT_SITE_TAGS,
+  DEFAULT_SITE_TAGS_DISPLAY,
+  slugify,
+  applyDisplaySettings,
+} from "@/lib/tags";
+import { createClient } from "@/lib/supabase/server";
 
 const latestPhoto = posts[0];
 
@@ -64,9 +72,33 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     ? profile.ticker_items
     : DEFAULT_TICKER_ITEMS;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const siteTags: SiteTag[] = ((profile as any).site_tags as SiteTag[] | null)?.filter(
+  const rawSiteTags: SiteTag[] = ((profile as any).site_tags as SiteTag[] | null)?.filter(
     (t) => t?.label?.trim()
   ) ?? DEFAULT_SITE_TAGS;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const siteTagsDisplay: SiteTagsDisplay =
+    ((profile as any).site_tags_display as SiteTagsDisplay | null) ?? DEFAULT_SITE_TAGS_DISPLAY;
+
+  // For 'volume' mode, count how many photos carry each tag label
+  let volumeMap: Record<string, number> | undefined
+  if (siteTagsDisplay.mode === "volume") {
+    const supabase = await createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: photoRows } = await (supabase as any)
+      .from("photos")
+      .select("tags")
+      .eq("user_id", profile.id)
+      .not("tags", "is", null) as { data: { tags: string[] | null }[] | null }
+    volumeMap = {}
+    for (const row of photoRows ?? []) {
+      for (const tag of row.tags ?? []) {
+        volumeMap[tag] = (volumeMap[tag] ?? 0) + 1
+      }
+    }
+  }
+
+  const siteTags = applyDisplaySettings(rawSiteTags, siteTagsDisplay, volumeMap);
 
   return (
     <main className="max-w-[1100px] mx-auto px-8 py-12 relative">
