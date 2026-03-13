@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,12 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.google.services)
+}
+
+// Load local.properties — gitignored, contains Supabase credentials
+val localProps = Properties().apply {
+    val f = rootProject.file("app/local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -22,6 +30,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Supabase config — injected from local.properties at build time
+        buildConfigField("String", "SUPABASE_URL",
+            "\"${localProps["SUPABASE_URL"] ?: "https://loawjmjuwrjjgmedswro.supabase.co"}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY",
+            "\"${localProps["SUPABASE_ANON_KEY"] ?: ""}\"")
     }
 
     buildTypes {
