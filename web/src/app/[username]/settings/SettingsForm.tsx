@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Profile settings form — tabbed: Profile (sub: Info · Likes & Dislikes · Ticker) · About · Professional
- * [SQ.S-W-2603-0034] [SQ.S-W-2603-0038] [SQ.S-W-2603-0039] [SQ.S-W-2603-0040] [SQ.S-W-2603-0041] [SQ.S-W-2603-0046]
+ * Profile settings form — tabbed: Profile (sub: Info · Likes & Dislikes · Ticker) · About · Professional · Site Tags · API Keys
+ * [SQ.S-W-2603-0034] [SQ.S-W-2603-0038] [SQ.S-W-2603-0039] [SQ.S-W-2603-0040] [SQ.S-W-2603-0041] [SQ.S-W-2603-0046] [SQ.S-W-2603-0056]
  */
 
 import { useState } from "react";
@@ -14,11 +14,12 @@ import FactoidEditor from "@/components/settings/FactoidEditor";
 import LikesDislikesEditor from "@/components/settings/LikesDislikesEditor";
 import TickerEditor from "@/components/settings/TickerEditor";
 import SiteTagsEditor from "@/components/settings/SiteTagsEditor";
+import ApiKeysEditor from "@/components/settings/ApiKeysEditor";
 import type { Factoid, LikeDislike } from "@/types/profile-extras";
 import type { SiteTag, SiteTagsDisplay } from "@/lib/tags";
 import { DEFAULT_SITE_TAGS_DISPLAY } from "@/lib/tags";
 
-const SETTINGS_TABS = ["Profile", "About", "Professional", "Site Tags"] as const;
+const SETTINGS_TABS = ["Profile", "About", "Professional", "Site Tags", "API Keys"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 const PROFILE_SUBTABS = ["Info", "Likes & Dislikes", "Ticker"] as const;
@@ -373,34 +374,43 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
         </div>
       )}
 
-      {/* ── Status messages ── */}
-      {error && (
+      {/* ══════ API KEYS TAB ══════ */}
+      {tab === "API Keys" && (
+        <div className="space-y-8">
+          <ApiKeysEditor userId={profile.id} />
+        </div>
+      )}
+
+      {/* ── Status messages (profile tabs only) ── */}
+      {tab !== "API Keys" && error && (
         <div className="border-3 border-red-500 bg-red-50 p-3 font-mono text-[0.78rem] text-red-600">
           {error}
         </div>
       )}
-      {saved && (
+      {tab !== "API Keys" && saved && (
         <div className="border-3 border-green bg-green/10 p-3 font-mono text-[0.78rem] text-ink">
           ✓ Profile updated successfully
         </div>
       )}
 
-      {/* ── Actions ── */}
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-6 py-2.5 bg-ink text-bg font-head font-bold text-[0.78rem] uppercase border-3 border-ink hover:bg-transparent hover:text-ink transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          {saving ? "Saving…" : "Save Changes"}
-        </button>
-        <a
-          href={`/${profile.username}`}
-          className="px-6 py-2.5 bg-transparent text-ink font-head font-bold text-[0.78rem] uppercase border-3 border-ink hover:bg-ink hover:text-bg transition-colors no-underline inline-block"
-        >
-          Cancel
-        </a>
-      </div>
+      {/* ── Actions (hidden on API Keys tab — that tab manages its own state) ── */}
+      {tab !== "API Keys" && (
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2.5 bg-ink text-bg font-head font-bold text-[0.78rem] uppercase border-3 border-ink hover:bg-transparent hover:text-ink transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {saving ? "Saving…" : "Save Changes"}
+          </button>
+          <a
+            href={`/${profile.username}`}
+            className="px-6 py-2.5 bg-transparent text-ink font-head font-bold text-[0.78rem] uppercase border-3 border-ink hover:bg-ink hover:text-bg transition-colors no-underline inline-block"
+          >
+            Cancel
+          </a>
+        </div>
+      )}
     </form>
   );
 }

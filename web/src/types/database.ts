@@ -97,6 +97,8 @@ export type Database = {
           likes: Json | null
           linkedin_url: string | null
           professional_name: string | null
+          site_tags: Json | null
+          site_tags_display: Json | null
           ticker_enabled: boolean
           ticker_items: string[] | null
           updated_at: string
@@ -114,6 +116,8 @@ export type Database = {
           likes?: Json | null
           linkedin_url?: string | null
           professional_name?: string | null
+          site_tags?: Json | null
+          site_tags_display?: Json | null
           ticker_enabled?: boolean
           ticker_items?: string[] | null
           updated_at?: string
@@ -131,6 +135,8 @@ export type Database = {
           likes?: Json | null
           linkedin_url?: string | null
           professional_name?: string | null
+          site_tags?: Json | null
+          site_tags_display?: Json | null
           ticker_enabled?: boolean
           ticker_items?: string[] | null
           updated_at?: string
