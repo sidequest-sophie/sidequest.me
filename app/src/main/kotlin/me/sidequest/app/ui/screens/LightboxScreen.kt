@@ -22,7 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableOffsetOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -123,7 +123,7 @@ private fun ZoomablePhoto(
     modifier : Modifier = Modifier,
 ) {
     var scale  by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableOffsetOf(0f, 0f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
 
     AsyncImage(
         model              = photo.imageUrl,

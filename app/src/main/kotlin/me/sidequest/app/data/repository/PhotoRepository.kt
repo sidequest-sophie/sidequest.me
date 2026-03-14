@@ -33,7 +33,7 @@ class PhotoRepository @Inject constructor(
                 filter {
                     eq("user_id", userId)
                     if (filterTag != null) {
-                        contains("tags", "[\"$filterTag\"]")
+                        contains("tags", listOf(filterTag))
                     }
                 }
                 order("created_at", Order.DESCENDING)

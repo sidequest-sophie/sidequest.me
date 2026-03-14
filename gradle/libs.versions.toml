@@ -3,8 +3,8 @@ agp = "8.6.0"
 kotlin = "2.0.21"
 google-services = "4.4.2"
 firebase-bom = "33.7.0"
-supabase = "2.5.4"
-ktor = "2.3.12"
+supabase = "3.0.3"
+ktor = "3.0.3"
 androidx-core = "1.15.0"
 androidx-lifecycle = "2.8.7"
 androidx-activity = "1.9.3"
@@ -74,7 +74,7 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 
 # Supabase [SQ.M-A-2603-0022]
 supabase-bom      = { group = "io.github.jan-tennert.supabase", name = "bom",          version.ref = "supabase" }
-supabase-auth      = { group = "io.github.jan-tennert.supabase", name = "gotrue-kt",    version.ref = "supabase" }
+supabase-auth      = { group = "io.github.jan-tennert.supabase", name = "auth-kt",      version.ref = "supabase" }
 supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt", version.ref = "supabase" }
 ktor-android      = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 
