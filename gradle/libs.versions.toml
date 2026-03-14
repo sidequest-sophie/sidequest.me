@@ -3,7 +3,6 @@ agp = "8.6.0"
 kotlin = "2.0.21"
 google-services = "4.4.2"
 firebase-bom = "33.7.0"
-composeCompiler = "1.5.14"
 supabase = "2.6.1"
 ktor = "2.3.12"
 androidx-core = "1.15.0"
@@ -87,6 +86,7 @@ androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espres
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
