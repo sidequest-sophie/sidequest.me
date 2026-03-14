@@ -10,6 +10,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.status.RefreshFailure
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -49,9 +50,9 @@ class AuthViewModel @Inject constructor(
                     }
                     AuthState.Unauthenticated
                 }
-                is SessionStatus.LoadingFromStorage ->
+                SessionStatus.Initializing ->
                     AuthState.Loading
-                is SessionStatus.NetworkError ->
+                is SessionStatus.RefreshFailure ->
                     AuthState.Error("Network error — check your connection")
             }
         }
