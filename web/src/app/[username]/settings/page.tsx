@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getProfileByUsername, getCurrentUser } from "@/lib/profiles";
+import { createClient } from "@/lib/supabase/server";
 import SettingsForm from "./SettingsForm";
 
 interface SettingsPageProps {
@@ -28,6 +29,17 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
     redirect(`/${username}`);
   }
 
+  // Fetch all distinct tags used across this user's writings
+  const supabase = await createClient();
+  const { data: writings } = await (supabase as any)
+    .from("writings")
+    .select("tags")
+    .eq("user_id", profile.id) as { data: { tags: string[] }[] | null };
+
+  const writingTags = Array.from(
+    new Set((writings ?? []).flatMap((w) => w.tags ?? []))
+  ).sort();
+
   return (
     <main className="max-w-[680px] mx-auto px-8 py-12">
       <div className="mb-8">
@@ -37,7 +49,7 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
         <p className="font-mono text-[0.78rem] opacity-60">@{username}</p>
       </div>
 
-      <SettingsForm profile={profile} />
+      <SettingsForm profile={profile} writingTags={writingTags} />
     </main>
   );
 }

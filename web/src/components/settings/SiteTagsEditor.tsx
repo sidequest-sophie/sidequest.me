@@ -25,6 +25,8 @@ interface SiteTagsEditorProps {
   display: SiteTagsDisplay;
   onChange: (tags: SiteTag[]) => void;
   onDisplayChange: (display: SiteTagsDisplay) => void;
+  /** All distinct tags used across the user's writings — for "promote to site tag" suggestions */
+  writingTags?: string[];
 }
 
 export default function SiteTagsEditor({
@@ -32,6 +34,7 @@ export default function SiteTagsEditor({
   display,
   onChange,
   onDisplayChange,
+  writingTags = [],
 }: SiteTagsEditorProps) {
   const [rows, setRows] = useState<SiteTag[]>(
     tags.length > 0 ? tags : [{ label: "", color: "sticker-orange" }]
@@ -109,6 +112,26 @@ export default function SiteTagsEditor({
     const limit = isNaN(n) || n < 0 ? 0 : Math.min(n, MAX_SITE_TAGS);
     onDisplayChange({ ...display, limit });
   };
+
+  // ── Promote writing tag to site tag ────────────────────────────────────────
+
+  const handlePromote = (label: string) => {
+    if (rows.length >= MAX_SITE_TAGS) return;
+    const usedColors = rows.map((r) => r.color);
+    const nextColor =
+      STICKER_COLORS.find((c) => !usedColors.includes(c)) ?? "sticker-orange";
+    const next = [...rows, { label, color: nextColor }];
+    setRows(next);
+    emitTags(next);
+  };
+
+  // Suggested tags = writing tags not already in site tags (case-insensitive)
+  const siteTagLabelsLower = rows
+    .map((r) => r.label.trim().toLowerCase())
+    .filter(Boolean);
+  const suggestedTags = writingTags.filter(
+    (wt) => !siteTagLabelsLower.includes(wt.toLowerCase())
+  );
 
   const isPref = display.mode === "preference";
   const validTagCount = rows.filter((r) => r.label.trim()).length;
@@ -277,6 +300,32 @@ export default function SiteTagsEditor({
           </button>
         )}
       </div>
+
+      {/* ── Suggested from writings ────────────────────────────── */}
+      {suggestedTags.length > 0 && rows.length < MAX_SITE_TAGS && (
+        <div>
+          <div className="font-mono text-[0.65rem] uppercase tracking-wider opacity-50 mb-3">
+            Suggested from your writings
+          </div>
+          <p className="font-mono text-[0.62rem] opacity-40 mb-3">
+            Tags used on your writings that aren&apos;t site tags yet. Promote them to make them filterable on your profile.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {suggestedTags.map((wt) => (
+              <button
+                key={wt}
+                type="button"
+                onClick={() => handlePromote(wt)}
+                className="group flex items-center gap-1.5 px-3 py-1.5 border-2 border-dashed border-ink/30 bg-white font-mono text-[0.7rem] text-ink/60 hover:border-ink hover:text-ink hover:bg-ink/5 transition-all cursor-pointer"
+                title={`Promote "${wt}" to site tag`}
+              >
+                <span className="text-[0.6rem] opacity-40 group-hover:opacity-100 transition-opacity">+</span>
+                {wt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

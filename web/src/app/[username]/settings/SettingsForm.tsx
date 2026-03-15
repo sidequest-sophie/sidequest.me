@@ -27,9 +27,10 @@ type ProfileSubTab = (typeof PROFILE_SUBTABS)[number];
 
 interface SettingsFormProps {
   profile: Profile;
+  writingTags?: string[];
 }
 
-export default function SettingsForm({ profile }: SettingsFormProps) {
+export default function SettingsForm({ profile, writingTags = [] }: SettingsFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<SettingsTab>("Profile");
   const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>("Info");
@@ -370,6 +371,7 @@ export default function SettingsForm({ profile }: SettingsFormProps) {
             display={siteTagsDisplay}
             onChange={setSiteTags}
             onDisplayChange={setSiteTagsDisplay}
+            writingTags={writingTags}
           />
         </div>
       )}
