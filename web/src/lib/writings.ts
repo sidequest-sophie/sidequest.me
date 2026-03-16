@@ -53,6 +53,8 @@ export interface WritingApiItem {
   published_at: string
   word_count: number
   excerpt: string
+  image_url: string | null
+  external_url: string | null
   body_html?: string // only included when ?fields=body
 }
 
