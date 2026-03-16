@@ -42,7 +42,7 @@ export default async function IdeasPage({ params, searchParams }: Props) {
   // Build query
   let query = (supabase as any)
     .from('writings')
-    .select('id, title, slug, tags, word_count, body_html, published_at', { count: 'exact' })
+    .select('id, title, slug, tags, word_count, body_html, published_at, external_url', { count: 'exact' })
     .eq('user_id', profile.id)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
@@ -199,6 +199,17 @@ export default async function IdeasPage({ params, searchParams }: Props) {
                   >
                     {w.title}
                   </Link>
+                  {w.external_url && (
+                    <a
+                      href={w.external_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block ml-2 align-middle opacity-30 hover:opacity-70 transition-opacity"
+                      title={`Originally published at ${new URL(w.external_url).hostname.replace(/^www\./, '')}`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                  )}
                 </h2>
 
                 {excerpt && (

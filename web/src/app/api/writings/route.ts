@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     tags?: string[]
     status?: string
     canonical_url?: string
+    external_url?: string | null
   }
 
   if (!body.title?.trim()) {
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       tags:       body.tags ?? [],
       status:     body.status ?? 'draft',
       canonical_url: body.canonical_url ?? null,
+      external_url: body.external_url ?? null,
       published_at: body.status === 'published' ? new Date().toISOString() : null,
     })
     .select('id, slug')

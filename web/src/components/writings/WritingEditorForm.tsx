@@ -34,6 +34,7 @@ export default function WritingEditorForm({
   const [wordCount, setWordCount] = useState(writing?.word_count ?? 0)
   const [tags, setTags] = useState<string[]>(writing?.tags ?? [])
   const [customTag, setCustomTag] = useState('')
+  const [externalUrl, setExternalUrl] = useState(writing?.external_url ?? '')
   const [status, setStatus] = useState<WritingStatus>(writing?.status ?? 'draft')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -95,7 +96,7 @@ export default function WritingEditorForm({
         word_count: wordCount,
         tags,
         status: targetStatus,
-        ...(writing?.id ? {} : {}),
+        external_url: externalUrl.trim() || null,
       }
 
       const url = writing?.id
@@ -210,6 +211,17 @@ export default function WritingEditorForm({
             </span>
           ))}
         </div>
+      </div>
+
+      {/* External URL */}
+      <div className="mt-6">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">External URL</p>
+        <input
+          value={externalUrl}
+          onChange={(e) => { setExternalUrl(e.target.value); setSaved(false) }}
+          placeholder="https://… (link to the original if hosted elsewhere)"
+          className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
+        />
       </div>
 
       {/* Actions */}

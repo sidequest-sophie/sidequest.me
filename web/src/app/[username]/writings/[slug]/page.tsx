@@ -113,6 +113,17 @@ export default async function WritingPostPage({ params }: Props) {
           <span>·</span>
           <span>{writing.word_count.toLocaleString()} words</span>
         </div>
+        {writing.external_url && (
+          <a
+            href={writing.external_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-md hover:border-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            View original at {new URL(writing.external_url).hostname.replace(/^www\./, '')}
+          </a>
+        )}
         {writing.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {writing.tags.map((tag) => {

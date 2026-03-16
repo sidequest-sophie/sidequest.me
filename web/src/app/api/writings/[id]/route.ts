@@ -33,6 +33,7 @@ export async function PATCH(
     tags?: string[]
     status?: string
     canonical_url?: string
+    external_url?: string | null
   }
 
   // Re-slug if title or slug changed
@@ -59,6 +60,7 @@ export async function PATCH(
   if (body.tags       !== undefined) update.tags       = body.tags
   if (body.status     !== undefined) update.status     = body.status
   if (body.canonical_url !== undefined) update.canonical_url = body.canonical_url
+  if (body.external_url !== undefined) update.external_url = body.external_url
 
   const { data, error } = await (supabase as any)
     .from('writings')

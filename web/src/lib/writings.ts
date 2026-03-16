@@ -17,6 +17,7 @@ export interface Writing {
   scheduled_at: string | null
   word_count: number
   canonical_url: string | null
+  external_url: string | null
   in_series_nav: boolean
   series_id: string | null
   series_position: number | null
