@@ -217,10 +217,18 @@ body {
 /* ═══════════════ CARD HOVER ═══════════════ */
 .card-hover {
   transition: all 0.15s ease;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 .card-hover:hover {
   transform: translate(-3px, -3px);
   box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* Prevent blurry text on rotated/transformed elements */
+[style*="rotate"] {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* ═══════════════ SECTION TITLE ═══════════════ */
