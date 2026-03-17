@@ -3,11 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import type { Writing, WritingApiItem } from '@/lib/writings'
 import { excerptFromHtml } from '@/lib/writings'
 
+interface ApiKeyResult {
+  user_id: string
+  scope: { entity_type: string; entity_id: string } | null
+}
+
 async function resolveApiKey(
   authHeader: string | null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-): Promise<string | null> {
+): Promise<ApiKeyResult | null> {
   if (!authHeader?.startsWith('Bearer ')) return null
   const rawKey = authHeader.slice(7)
   if (!rawKey) return null
@@ -21,12 +26,12 @@ async function resolveApiKey(
 
   const { data: keyRow } = await supabase
     .from('api_keys')
-    .select('user_id, revoked_at')
+    .select('user_id, revoked_at, scope')
     .eq('key_hash', hashHex)
     .single()
 
   if (!keyRow || keyRow.revoked_at) return null
-  return keyRow.user_id as string
+  return { user_id: keyRow.user_id as string, scope: keyRow.scope ?? null }
 }
 
 // GET api.sidequest.me/content/writings/[slug]
@@ -54,11 +59,12 @@ export async function GET(
 
   if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const userId = await resolveApiKey(request.headers.get('authorization'), supabase)
-  if (!userId) return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 })
-  if (userId !== profile.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const keyResult = await resolveApiKey(request.headers.get('authorization'), supabase)
+  if (!keyResult) return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 })
+  if (keyResult.user_id !== profile.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // slug === 'latest' — return most recent published post
+  // Fetch the writing
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any
   if (slug === 'latest') {
     query = (supabase as any)
@@ -82,6 +88,22 @@ export async function GET(
   const { data: w, error } = await query as { data: Partial<Writing> | null; error: unknown }
 
   if (error || !w) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Scope enforcement: if the key is scoped, verify this writing is linked to the scoped entity
+  if (keyResult.scope) {
+    const { data: link } = await (supabase as any)
+      .from('writing_links')
+      .select('id')
+      .eq('writing_id', w.id)
+      .eq('entity_type', keyResult.scope.entity_type)
+      .eq('entity_id', keyResult.scope.entity_id)
+      .limit(1)
+      .maybeSingle() as { data: { id: string } | null }
+
+    if (!link) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  }
 
   const item: WritingApiItem = {
     id:           w.id!,
