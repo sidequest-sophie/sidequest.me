@@ -35,6 +35,7 @@ export async function PATCH(
     canonical_url?: string
     external_url?: string | null
     image_url?: string | null
+    published_at?: string | null
   }
 
   // Re-slug if title or slug changed
@@ -46,12 +47,17 @@ export async function PATCH(
     slug = await uniqueSlug(rawSlug, user.id, id, supabase)
   }
 
-  // Set published_at only on first publish
-  const becomingPublished =
-    body.status === 'published' && existing.status !== 'published'
-  const published_at = becomingPublished
-    ? new Date().toISOString()
-    : (existing.published_at ?? null)
+  // published_at: use explicit override if provided, otherwise auto-set on first publish
+  let published_at: string | null
+  if (body.published_at !== undefined) {
+    published_at = body.published_at
+  } else {
+    const becomingPublished =
+      body.status === 'published' && existing.status !== 'published'
+    published_at = becomingPublished
+      ? new Date().toISOString()
+      : (existing.published_at ?? null)
+  }
 
   const update: Record<string, unknown> = { slug, published_at }
   if (body.title      !== undefined) update.title      = body.title.trim()

@@ -57,6 +57,7 @@ export default function WritingEditorForm({
   const [tags, setTags] = useState<string[]>(writing?.tags ?? [])
   const [customTag, setCustomTag] = useState('')
   const [externalUrl, setExternalUrl] = useState(writing?.external_url ?? '')
+  const [publishedAt, setPublishedAt] = useState(writing?.published_at ?? '')
   const [imageUrl, setImageUrl] = useState(writing?.image_url ?? '')
   const [links, setLinks] = useState<WritingLinkRef[]>(existingLinks)
   const [status, setStatus] = useState<WritingStatus>(writing?.status ?? 'draft')
@@ -183,6 +184,7 @@ export default function WritingEditorForm({
         status: targetStatus,
         external_url: externalUrl.trim() || null,
         image_url: imageUrl.trim() || null,
+        published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
       }
 
       const url = writing?.id
@@ -527,15 +529,27 @@ export default function WritingEditorForm({
         </div>
       )}
 
-      {/* External URL */}
-      <div className="mt-6">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">External URL</p>
-        <input
-          value={externalUrl}
-          onChange={(e) => { setExternalUrl(e.target.value); setSaved(false) }}
-          placeholder="https://… (link to the original if hosted elsewhere)"
-          className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
-        />
+      {/* Publish date + External URL */}
+      <div className="mt-6 grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Publish date</p>
+          <input
+            type="date"
+            value={publishedAt ? new Date(publishedAt).toISOString().split('T')[0] : ''}
+            onChange={(e) => { setPublishedAt(e.target.value ? new Date(e.target.value + 'T12:00:00').toISOString() : ''); setSaved(false) }}
+            className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
+          />
+          <p className="text-xs text-gray-400 mt-1">Leave empty to auto-set on publish</p>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">External URL</p>
+          <input
+            value={externalUrl}
+            onChange={(e) => { setExternalUrl(e.target.value); setSaved(false) }}
+            placeholder="https://… (link to the original if hosted elsewhere)"
+            className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
+          />
+        </div>
       </div>
 
       {/* Featured Image URL is now the drag/drop zone above the title */}
