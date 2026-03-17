@@ -125,6 +125,20 @@ feat(auth): implement Supabase JWT refresh [SQ.M-A-00003]
 - Any change to existing `/web` code
 - Deploying or publishing anything
 
+### Pre-push checklist (mandatory before every push to `main`)
+1. **`npm run build`** from `/web` — must pass. `tsc --noEmit` is NOT sufficient; Turbopack catches
+   server/client boundary violations (e.g. importing `next/headers` into a client component) that
+   `tsc` misses.
+2. Push to `main`.
+3. **Post-deploy verification** — check the Vercel deployment state via `list_deployments`. If the
+   deployment state is `ERROR`:
+   - Fetch build logs via `get_deployment_build_logs`
+   - Fix the error locally
+   - Run `npm run build` again to confirm
+   - Commit the fix and push
+   - Re-check deployment state
+   - Do NOT tell Sophie it's live until the deployment is `READY`
+
 ### Communication style
 - **Terse.** No padding or over-explanation.
 - Regular status pings as work progresses (every meaningful step).
