@@ -65,6 +65,7 @@ export default function WritingEditorForm({
   const [tagsOpen, setTagsOpen] = useState(false)
   const [heroUploading, setHeroUploading] = useState(false)
   const [heroDragOver, setHeroDragOver] = useState(false)
+  const [heroCacheBust, setHeroCacheBust] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const heroInputRef = useRef<HTMLInputElement>(null)
 
@@ -139,6 +140,7 @@ export default function WritingEditorForm({
       if (!res.ok) throw new Error('Upload failed')
       const { url } = await res.json() as { url: string }
       setImageUrl(url)
+      setHeroCacheBust(Date.now())
       setSaved(false)
     } catch {
       setError('Hero image upload failed')
@@ -273,7 +275,7 @@ export default function WritingEditorForm({
         {imageUrl ? (
           <div className="relative group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Hero" className="w-full h-48 object-cover" />
+            <img src={heroCacheBust ? `${imageUrl}?t=${heroCacheBust}` : imageUrl} alt="Hero" className="w-full h-48 object-cover" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors">
               <span className="text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity">
                 {heroUploading ? 'Uploading…' : 'Click or drop to replace'}
