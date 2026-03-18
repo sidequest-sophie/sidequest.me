@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { AdventurePost, PostType } from '@/lib/adventures'
+import type { AdventurePost, PostType, Chapter } from '@/lib/adventures'
 
 interface AdventurePostFeedProps {
   adventureId: string
+  chapters?: Chapter[]
 }
 
 const POST_TYPE_LABELS: Record<PostType, { icon: string; label: string }> = {
@@ -14,15 +15,17 @@ const POST_TYPE_LABELS: Record<PostType, { icon: string; label: string }> = {
   article_link: { icon: '📝', label: 'Link writing' },
 }
 
-export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProps) {
+export default function AdventurePostFeed({ adventureId, chapters = [] }: AdventurePostFeedProps) {
   const [posts, setPosts] = useState<AdventurePost[]>([])
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'timeline' | 'chapters'>('timeline')
 
   // Composer state
   const [composerType, setComposerType] = useState<PostType>('micro')
   const [composerOpen, setComposerOpen] = useState(false)
   const [body, setBody] = useState('')
   const [locationName, setLocationName] = useState('')
+  const [chapterIndex, setChapterIndex] = useState<number | null>(null)
   const [photos, setPhotos] = useState<{ url: string; caption?: string }[]>([])
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +77,7 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
         body: body.trim() || null,
         location_name: locationName.trim() || null,
         photos: composerType === 'photo' ? photos : [],
+        chapter_index: chapterIndex,
       }
 
       const res = await fetch('/api/adventure-posts', {
@@ -92,6 +96,7 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
       setBody('')
       setLocationName('')
       setPhotos([])
+      setChapterIndex(null)
       setComposerOpen(false)
       fetchPosts()
     } catch {
@@ -113,6 +118,51 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       + ' · '
       + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const renderPost = (post: AdventurePost) => {
+    const meta = POST_TYPE_LABELS[post.post_type as PostType] ?? POST_TYPE_LABELS.micro
+    const chapterLabel = post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index]
+      ? `Ch.${post.chapter_index + 1}: ${chapters[post.chapter_index].title}`
+      : null
+    return (
+      <div key={post.id} className="border-3 border-ink/20 p-4 bg-bg-card group">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[0.6rem] font-bold uppercase text-ink-muted">
+              {meta.icon} {meta.label}
+            </span>
+            {post.location_name && (
+              <span className="font-mono text-[0.6rem] text-orange">📍 {post.location_name}</span>
+            )}
+            {viewMode === 'timeline' && chapterLabel && (
+              <span className="font-mono text-[0.55rem] px-1.5 py-0.5 bg-ink/5 text-ink-muted">{chapterLabel}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[0.55rem] text-ink-muted">{formatDate(post.posted_at)}</span>
+            <button
+              type="button"
+              onClick={() => handleDelete(post.id)}
+              className="font-mono text-[0.55rem] text-ink-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+        {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
+        {post.photos && (post.photos as { url: string }[]).length > 0 && (
+          <div className="flex gap-2 flex-wrap mt-2">
+            {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
+              <div key={i} className="w-24 h-24 border-2 border-ink/10 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -228,6 +278,22 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
             />
           )}
 
+          {/* Chapter selector */}
+          {chapters.length > 0 && (
+            <div className="mb-3">
+              <select
+                value={chapterIndex ?? ''}
+                onChange={(e) => setChapterIndex(e.target.value === '' ? null : Number(e.target.value))}
+                className="px-3 py-2 border-2 border-ink/20 bg-bg font-mono text-[0.75rem] focus:outline-none focus:border-ink/50 cursor-pointer transition-colors"
+              >
+                <option value="">No chapter</option>
+                {chapters.map((ch, i) => (
+                  <option key={i} value={i}>Ch.{i + 1}: {ch.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center gap-3">
             <button
@@ -251,6 +317,30 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
         </div>
       )}
 
+      {/* ── View mode toggle ── */}
+      {chapters.length > 0 && posts.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setViewMode('timeline')}
+            className={`px-3 py-1 font-mono text-[0.6rem] font-bold uppercase border-2 transition-all cursor-pointer ${
+              viewMode === 'timeline' ? 'border-ink bg-ink text-bg' : 'border-ink/20 hover:border-ink/50'
+            }`}
+          >
+            Timeline
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('chapters')}
+            className={`px-3 py-1 font-mono text-[0.6rem] font-bold uppercase border-2 transition-all cursor-pointer ${
+              viewMode === 'chapters' ? 'border-ink bg-ink text-bg' : 'border-ink/20 hover:border-ink/50'
+            }`}
+          >
+            By chapter
+          </button>
+        </div>
+      )}
+
       {/* ── Post feed ── */}
       {loading ? (
         <p className="font-mono text-[0.78rem] opacity-40">Loading posts…</p>
@@ -258,57 +348,49 @@ export default function AdventurePostFeed({ adventureId }: AdventurePostFeedProp
         <p className="font-mono text-[0.78rem] opacity-40 text-center py-8">
           No posts yet. Add your first update to this adventure.
         </p>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post) => {
-            const meta = POST_TYPE_LABELS[post.post_type as PostType] ?? POST_TYPE_LABELS.micro
+      ) : viewMode === 'chapters' && chapters.length > 0 ? (
+        /* ── Chapter-grouped view ── */
+        <div className="space-y-6">
+          {chapters.map((ch, ci) => {
+            const chapterPosts = posts.filter((p) => p.chapter_index === ci)
             return (
-              <div key={post.id} className="border-3 border-ink/20 p-4 bg-bg-card group">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[0.6rem] font-bold uppercase text-ink-muted">
-                      {meta.icon} {meta.label}
-                    </span>
-                    {post.location_name && (
-                      <span className="font-mono text-[0.6rem] text-orange">
-                        📍 {post.location_name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[0.55rem] text-ink-muted">
-                      {formatDate(post.posted_at)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(post.id)}
-                      className="font-mono text-[0.55rem] text-ink-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  </div>
+              <div key={ci}>
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-ink/10">
+                  <span className="font-mono text-[0.6rem] font-bold text-orange">Ch.{ci + 1}</span>
+                  <span className="font-head font-bold text-[0.85rem] uppercase">{ch.title}</span>
+                  <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{chapterPosts.length} posts</span>
                 </div>
-
-                {/* Body */}
-                {post.body && (
-                  <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>
-                )}
-
-                {/* Photos */}
-                {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                  <div className="flex gap-2 flex-wrap mt-2">
-                    {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                      <div key={i} className="w-24 h-24 border-2 border-ink/10 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
+                {chapterPosts.length === 0 ? (
+                  <p className="font-mono text-[0.68rem] opacity-30 py-3 pl-4">No posts in this chapter yet.</p>
+                ) : (
+                  <div className="space-y-3 pl-4 border-l-2 border-ink/5">
+                    {chapterPosts.map((post) => renderPost(post))}
                   </div>
                 )}
               </div>
             )
           })}
+          {/* Unassigned posts */}
+          {(() => {
+            const unassigned = posts.filter((p) => p.chapter_index === null || p.chapter_index === undefined)
+            if (unassigned.length === 0) return null
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-ink/10">
+                  <span className="font-head font-bold text-[0.85rem] uppercase text-ink-muted">Unassigned</span>
+                  <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{unassigned.length} posts</span>
+                </div>
+                <div className="space-y-3 pl-4 border-l-2 border-ink/5">
+                  {unassigned.map((post) => renderPost(post))}
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      ) : (
+        /* ── Timeline view ── */
+        <div className="space-y-4">
+          {posts.map((post) => renderPost(post))}
         </div>
       )}
     </div>

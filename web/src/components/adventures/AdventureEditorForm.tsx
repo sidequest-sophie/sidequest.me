@@ -497,7 +497,7 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
 
       {/* Post feed — only for existing adventures */}
       {!isNew && adventure?.id && (
-        <AdventurePostFeed adventureId={adventure.id} />
+        <AdventurePostFeed adventureId={adventure.id} chapters={chapters} />
       )}
     </div>
   )
