@@ -9,6 +9,16 @@ export type AdventureStatus = typeof ADVENTURE_STATUSES[number]
 export const POST_TYPES = ['micro', 'photo', 'checkin', 'article_link'] as const
 export type PostType = typeof POST_TYPES[number]
 
+export type LocationType = 'single' | 'multi'
+
+export interface Waypoint {
+  name: string
+  lat?: number
+  lng?: number
+  arrival_date?: string    // ISO date
+  departure_date?: string  // ISO date
+}
+
 export interface Adventure {
   id: string
   user_id: string
@@ -22,6 +32,8 @@ export interface Adventure {
   location_name: string | null
   location_lat: number | null
   location_lng: number | null
+  location_type: LocationType
+  route: Waypoint[]
   status: AdventureStatus
   chapters: Chapter[]
   itinerary: ItineraryItem[]

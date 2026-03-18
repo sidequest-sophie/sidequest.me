@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { slugifyAdventure } from '@/lib/adventures'
-import type { LayoutTheme, AdventureStatus, Chapter, ItineraryItem } from '@/lib/adventures'
+import type { LayoutTheme, AdventureStatus, Chapter, ItineraryItem, LocationType, Waypoint } from '@/lib/adventures'
 
 // PATCH /api/adventures/[id]
 export async function PATCH(
@@ -34,6 +34,8 @@ export async function PATCH(
     location_name?: string | null
     location_lat?: number | null
     location_lng?: number | null
+    location_type?: LocationType
+    route?: Waypoint[]
     status?: AdventureStatus
     chapters?: Chapter[]
     itinerary?: ItineraryItem[]
@@ -59,6 +61,8 @@ export async function PATCH(
   if (body.location_name !== undefined) update.location_name = body.location_name
   if (body.location_lat !== undefined) update.location_lat = body.location_lat
   if (body.location_lng !== undefined) update.location_lng = body.location_lng
+  if (body.location_type !== undefined) update.location_type = body.location_type
+  if (body.route !== undefined) update.route = body.route
   if (body.status !== undefined) update.status = body.status
   if (body.chapters !== undefined) update.chapters = body.chapters
   if (body.itinerary !== undefined) update.itinerary = body.itinerary

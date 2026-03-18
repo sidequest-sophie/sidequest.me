@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { slugifyAdventure } from '@/lib/adventures'
-import type { LayoutTheme, AdventureStatus, Chapter, ItineraryItem } from '@/lib/adventures'
+import type { LayoutTheme, AdventureStatus, Chapter, ItineraryItem, LocationType, Waypoint } from '@/lib/adventures'
 
 // GET /api/adventures — list user's adventures
 export async function GET() {
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
     location_name?: string
     location_lat?: number
     location_lng?: number
+    location_type?: LocationType
+    route?: Waypoint[]
     status?: AdventureStatus
     chapters?: Chapter[]
     itinerary?: ItineraryItem[]
@@ -64,6 +66,8 @@ export async function POST(request: Request) {
       location_name: body.location_name?.trim() || null,
       location_lat: body.location_lat ?? null,
       location_lng: body.location_lng ?? null,
+      location_type: body.location_type || 'single',
+      route: body.route || [],
       status: body.status || 'draft',
       chapters: body.chapters || [],
       itinerary: body.itinerary || [],

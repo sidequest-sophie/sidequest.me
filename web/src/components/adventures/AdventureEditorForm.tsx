@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Adventure, LayoutTheme, AdventureStatus } from '@/lib/adventures'
+import type { Adventure, LayoutTheme, AdventureStatus, LocationType, Waypoint, Chapter } from '@/lib/adventures'
 import { THEME_META, STATUS_META, LAYOUT_THEMES, ADVENTURE_STATUSES, slugifyAdventure } from '@/lib/adventures'
 import AdventurePostFeed from './AdventurePostFeed'
 
@@ -25,6 +25,9 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
   const [startDate, setStartDate] = useState(adventure?.start_date ?? '')
   const [endDate, setEndDate] = useState(adventure?.end_date ?? '')
   const [locationName, setLocationName] = useState(adventure?.location_name ?? '')
+  const [locationType, setLocationType] = useState<LocationType>(adventure?.location_type ?? 'single')
+  const [route, setRoute] = useState<Waypoint[]>(adventure?.route ?? [])
+  const [chapters, setChapters] = useState<Chapter[]>(adventure?.chapters ?? [])
   const [status, setStatus] = useState<AdventureStatus>(adventure?.status ?? 'draft')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -85,7 +88,10 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
         layout_theme: layoutTheme,
         start_date: startDate || null,
         end_date: endDate || null,
-        location_name: locationName.trim() || null,
+        location_name: locationType === 'single' ? (locationName.trim() || null) : null,
+        location_type: locationType,
+        route: locationType === 'multi' ? route : [],
+        chapters,
         status,
       }
 
@@ -256,40 +262,190 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Location</p>
+      {/* Location type toggle + editor */}
+      <div className="mb-6">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Location</p>
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => { setLocationType('single'); setSaved(false) }}
+            className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
+              locationType === 'single' ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400'
+            }`}
+          >
+            📍 Single location
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLocationType('multi'); setSaved(false) }}
+            className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
+              locationType === 'multi' ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400'
+            }`}
+          >
+            🗺️ Route (multiple stops)
+          </button>
+        </div>
+
+        {locationType === 'single' ? (
           <input
             value={locationName}
             onChange={(e) => { setLocationName(e.target.value); setSaved(false) }}
             placeholder="Black Rock City, NV"
             className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
           />
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Status</p>
-          <div className="flex gap-2">
-            {ADVENTURE_STATUSES.map((s) => {
-              const meta = STATUS_META[s]
-              return (
+        ) : (
+          <div className="space-y-2">
+            {route.map((wp, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 w-5 text-center flex-shrink-0">{i + 1}</span>
+                <input
+                  value={wp.name}
+                  onChange={(e) => {
+                    const next = [...route]
+                    next[i] = { ...next[i], name: e.target.value }
+                    setRoute(next)
+                    setSaved(false)
+                  }}
+                  placeholder={`Stop ${i + 1}`}
+                  className="flex-1 text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-gray-400 bg-transparent"
+                />
+                <input
+                  type="date"
+                  value={wp.arrival_date ?? ''}
+                  onChange={(e) => {
+                    const next = [...route]
+                    next[i] = { ...next[i], arrival_date: e.target.value || undefined }
+                    setRoute(next)
+                    setSaved(false)
+                  }}
+                  title="Arrival date"
+                  className="text-xs border border-gray-200 rounded-md px-2 py-2 outline-none focus:border-gray-400 bg-transparent w-32"
+                />
                 <button
-                  key={s}
                   type="button"
-                  onClick={() => { setStatus(s); setSaved(false) }}
-                  className={`px-3 py-2 text-xs rounded-md border transition-all ${
-                    status === s
-                      ? s === 'live' ? 'bg-orange-500 border-orange-500 text-white'
-                        : s === 'upcoming' ? 'bg-yellow-500 border-yellow-500 text-white'
-                        : s === 'complete' ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-gray-800 border-gray-800 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                  }`}
+                  onClick={() => {
+                    setRoute((prev) => prev.filter((_, j) => j !== i))
+                    setSaved(false)
+                  }}
+                  className="text-xs text-gray-300 hover:text-red-500 transition-colors"
+                  title="Remove stop"
                 >
-                  {meta.label}
+                  ✕
                 </button>
-              )
-            })}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const newWp: Waypoint = { name: '' }
+                setRoute((prev) => [...prev, newWp])
+                setSaved(false)
+              }}
+              className="text-xs text-gray-500 hover:text-gray-800 transition-colors mt-1"
+            >
+              + Add stop
+            </button>
+
+            {/* Route summary */}
+            {route.filter((w) => w.name.trim()).length > 1 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-2">Route preview</p>
+                <p className="text-sm text-gray-600">
+                  {route.filter((w) => w.name.trim()).map((w) => w.name.trim()).join(' → ')}
+                </p>
+              </div>
+            )}
+
+            {/* Auto-suggest chapters */}
+            {route.filter((w) => w.name.trim()).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-gray-400">Chapters from route</p>
+                  {route.filter((w) => w.name.trim()).length > 0 && chapters.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newChapters = route
+                          .filter((w) => w.name.trim())
+                          .map((w) => ({ title: w.name.trim(), description: '' }))
+                        setChapters(newChapters)
+                        setSaved(false)
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700 transition-colors"
+                    >
+                      Generate chapters from stops →
+                    </button>
+                  )}
+                </div>
+                {chapters.length > 0 && (
+                  <div className="space-y-1.5">
+                    {chapters.map((ch, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-300 w-5 text-center flex-shrink-0">Ch.{i + 1}</span>
+                        <input
+                          value={ch.title}
+                          onChange={(e) => {
+                            const next = [...chapters]
+                            next[i] = { ...next[i], title: e.target.value }
+                            setChapters(next)
+                            setSaved(false)
+                          }}
+                          className="flex-1 text-sm border border-gray-100 rounded-md px-3 py-1.5 outline-none focus:border-gray-300 bg-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setChapters((prev) => prev.filter((_, j) => j !== i))
+                            setSaved(false)
+                          }}
+                          className="text-xs text-gray-300 hover:text-red-500 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChapters((prev) => [...prev, { title: '', description: '' }])
+                        setSaved(false)
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-800 transition-colors"
+                    >
+                      + Add chapter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+        )}
+      </div>
+
+      {/* Status */}
+      <div className="mb-6">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Status</p>
+        <div className="flex gap-2">
+          {ADVENTURE_STATUSES.map((s) => {
+            const meta = STATUS_META[s]
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => { setStatus(s); setSaved(false) }}
+                className={`px-3 py-2 text-xs rounded-md border transition-all ${
+                  status === s
+                    ? s === 'live' ? 'bg-orange-500 border-orange-500 text-white'
+                      : s === 'upcoming' ? 'bg-yellow-500 border-yellow-500 text-white'
+                      : s === 'complete' ? 'bg-green-600 border-green-600 text-white'
+                      : 'bg-gray-800 border-gray-800 text-white'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-400'
+                }`}
+              >
+                {meta.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
