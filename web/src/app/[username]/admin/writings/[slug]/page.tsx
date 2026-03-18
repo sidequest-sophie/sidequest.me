@@ -60,7 +60,7 @@ export default async function EditWritingPage({
       linkableEntities={{
         companies: companies.map((c) => ({ id: c.id, name: c.name, slug: c.slug, brandColour: c.brand_colour })),
         projects: projects.map((p) => ({ id: p.id, name: p.title, slug: p.slug })),
-        crowdfunding: crowdfundingProjects.map((cf) => ({ id: cf.id, name: cf.title, slug: cf.slug })),
+        crowdfunding: crowdfundingProjects.map((cf) => ({ id: cf.id, name: (cf as any).short_name || cf.title, slug: cf.slug })),
         likes: likes.filter((l) => l.id).map((l) => ({ id: l.id!, label: `${l.emoji} ${l.text}` })),
         dislikes: dislikes.filter((d) => d.id).map((d) => ({ id: d.id!, label: `${d.emoji} ${d.text}` })),
       }}
