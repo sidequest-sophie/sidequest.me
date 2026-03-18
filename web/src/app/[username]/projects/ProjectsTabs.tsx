@@ -16,7 +16,7 @@ interface ProjectsTabsProps {
 export default function ProjectsTabs({ activeTab, username, backedCount }: ProjectsTabsProps) {
   const tabs = [
     { key: "projects", label: "My Projects", href: `/${username}/projects` },
-    { key: "backed", label: `Backed (${backedCount})`, href: `/${username}/projects?tab=backed` },
+    { key: "backed", label: `Projects I Backed (${backedCount})`, href: `/${username}/projects?tab=backed` },
   ];
 
   return (
