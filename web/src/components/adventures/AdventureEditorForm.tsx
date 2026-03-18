@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Adventure, LayoutTheme, AdventureStatus } from '@/lib/adventures'
 import { THEME_META, STATUS_META, LAYOUT_THEMES, ADVENTURE_STATUSES, slugifyAdventure } from '@/lib/adventures'
+import AdventurePostFeed from './AdventurePostFeed'
 
 interface AdventureEditorFormProps {
   username: string
@@ -337,6 +338,11 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
       </div>
 
       {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+
+      {/* Post feed — only for existing adventures */}
+      {!isNew && adventure?.id && (
+        <AdventurePostFeed adventureId={adventure.id} />
+      )}
     </div>
   )
 }
