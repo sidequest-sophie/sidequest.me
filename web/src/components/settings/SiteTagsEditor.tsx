@@ -12,10 +12,13 @@ import { useState, useRef } from "react";
 import {
   type SiteTag,
   type StickerColor,
+  type TagShape,
   type SiteTagsDisplay,
   type SiteTagsDisplayMode,
   STICKER_COLORS,
   STICKER_COLOR_LABELS,
+  TAG_SHAPES,
+  TAG_SHAPE_LABELS,
   DEFAULT_SITE_TAGS_DISPLAY,
   MAX_SITE_TAGS,
 } from "@/lib/tags";
@@ -27,6 +30,62 @@ interface SiteTagsEditorProps {
   onDisplayChange: (display: SiteTagsDisplay) => void;
   /** All distinct tags used across the user's writings — for "promote to site tag" suggestions */
   writingTags?: string[];
+}
+
+/** Preview a tag in its configured shape. */
+function TagPreview({ tag }: { tag: SiteTag }) {
+  const label = tag.label || "Preview";
+  const icon = tag.icon;
+  const shape = tag.shape ?? "sticker";
+  const display = icon ? `${icon} ${label}` : label;
+
+  const base = "flex-shrink-0 font-mono text-[0.7rem] whitespace-nowrap overflow-hidden text-ellipsis transition-all";
+  const maxW = { maxWidth: 120, minWidth: 0 };
+
+  switch (shape) {
+    case "sticker":
+      return (
+        <span className={`sticker ${tag.color} ${base}`} style={{ ...maxW, padding: "4px 10px" }}>
+          {display}
+        </span>
+      );
+    case "pill":
+      return (
+        <span className={`${base} rounded-full px-3 py-1 ${tag.color}`} style={maxW}>
+          {display}
+        </span>
+      );
+    case "square":
+      return (
+        <span className={`${base} px-3 py-1 ${tag.color}`} style={maxW}>
+          {display}
+        </span>
+      );
+    case "outline":
+      return (
+        <span className={`${base} px-3 py-1 border-2 border-current bg-transparent`} style={maxW}>
+          {display}
+        </span>
+      );
+    case "hashtag":
+      return (
+        <span className={`${base} opacity-70`} style={maxW}>
+          #{label}
+        </span>
+      );
+    case "underline":
+      return (
+        <span className={`${base} border-b-2 border-current pb-0.5`} style={maxW}>
+          {display}
+        </span>
+      );
+    default:
+      return (
+        <span className={`sticker ${tag.color} ${base}`} style={{ ...maxW, padding: "4px 10px" }}>
+          {display}
+        </span>
+      );
+  }
 }
 
 export default function SiteTagsEditor({
@@ -58,6 +117,18 @@ export default function SiteTagsEditor({
 
   const handleColorChange = (idx: number, color: StickerColor) => {
     const next = rows.map((r, i) => (i === idx ? { ...r, color } : r));
+    setRows(next);
+    emitTags(next);
+  };
+
+  const handleIconChange = (idx: number, icon: string) => {
+    const next = rows.map((r, i) => (i === idx ? { ...r, icon: icon || undefined } : r));
+    setRows(next);
+    emitTags(next);
+  };
+
+  const handleShapeChange = (idx: number, shape: TagShape) => {
+    const next = rows.map((r, i) => (i === idx ? { ...r, shape } : r));
     setRows(next);
     emitTags(next);
   };
@@ -251,21 +322,34 @@ export default function SiteTagsEditor({
                 ))}
               </select>
 
-              {/* Preview swatch */}
-              <span
-                className={`sticker ${row.color} flex-shrink-0`}
-                style={{
-                  minWidth: 0,
-                  maxWidth: 90,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  fontSize: "0.7rem",
-                  padding: "4px 10px",
-                }}
+              {/* Icon input (emoji) */}
+              <input
+                type="text"
+                value={row.icon ?? ""}
+                onChange={(e) => handleIconChange(idx, e.target.value.slice(0, 4))}
+                placeholder="🏷️"
+                title="Icon (emoji)"
+                className="w-12 px-2 py-2 border-3 border-ink bg-bg-card text-center text-[1rem] focus:outline-none flex-shrink-0"
+                style={{ minWidth: 44 }}
+              />
+
+              {/* Shape picker */}
+              <select
+                value={row.shape ?? "sticker"}
+                onChange={(e) => handleShapeChange(idx, e.target.value as TagShape)}
+                title="Tag shape"
+                className="px-2 py-2 border-3 border-ink bg-bg-card font-mono text-[0.75rem] focus:outline-none cursor-pointer flex-shrink-0"
+                style={{ minWidth: 95 }}
               >
-                {row.label || "Preview"}
-              </span>
+                {TAG_SHAPES.map((s) => (
+                  <option key={s} value={s}>
+                    {TAG_SHAPE_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+
+              {/* Preview swatch */}
+              <TagPreview tag={row} />
 
               {/* Label input */}
               <input

@@ -3,9 +3,24 @@
  * [SQ.S-W-2603-0055]
  */
 
+export type TagShape = 'sticker' | 'pill' | 'square' | 'outline' | 'hashtag' | 'underline'
+
+export const TAG_SHAPES: TagShape[] = ['sticker', 'pill', 'square', 'outline', 'hashtag', 'underline']
+
+export const TAG_SHAPE_LABELS: Record<TagShape, string> = {
+  sticker:   'Sticker',
+  pill:      'Pill',
+  square:    'Square',
+  outline:   'Outline',
+  hashtag:   'Hashtag',
+  underline: 'Underline',
+}
+
 export interface SiteTag {
   label: string
   color: StickerColor
+  icon?: string        // emoji icon (e.g. '⛵', '🏳️‍⚧️', '💼')
+  shape?: TagShape     // visual shape — defaults to 'sticker' if unset
 }
 
 export type StickerColor =
