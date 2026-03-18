@@ -121,7 +121,7 @@ export default function BackedProjects({ projects, username, writingCounts }: Ba
                 )}
               </h3>
               {(project as any).tagline && (
-                <p className="font-mono text-[0.65rem] opacity-40 leading-snug mb-1 line-clamp-2">
+                <p className="text-[0.72rem] italic opacity-50 leading-snug mb-1.5 line-clamp-2">
                   {(project as any).tagline}
                 </p>
               )}
