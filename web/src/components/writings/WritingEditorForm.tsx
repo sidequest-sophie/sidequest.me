@@ -63,7 +63,9 @@ export default function WritingEditorForm({
   const [status, setStatus] = useState<WritingStatus>(writing?.status ?? 'draft')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [tagsOpen, setTagsOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(true)
+  const [backedExpanded, setBackedExpanded] = useState(false)
+  const [hashtagsExpanded, setHashtagsExpanded] = useState(false)
   const [heroUploading, setHeroUploading] = useState(false)
   const [heroDragOver, setHeroDragOver] = useState(false)
   const [heroCacheBust, setHeroCacheBust] = useState(0)
@@ -333,74 +335,53 @@ export default function WritingEditorForm({
         onImageUpload={handleImageUpload}
       />
 
-      {/* Tags — collapsible */}
-      <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setTagsOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-        >
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Tags{tags.length > 0 && ` (${tags.length})`}
-          </span>
-          <div className="flex items-center gap-2">
-            {!tagsOpen && tags.length > 0 && (
-              <span className="text-xs text-gray-400 truncate max-w-[200px]">
-                {tags.join(', ')}
-              </span>
-            )}
-            <svg
-              className={`w-4 h-4 text-gray-400 transition-transform ${tagsOpen ? 'rotate-180' : ''}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+      {/* Tags — always expanded */}
+      <div className="mt-6">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Tags{tags.length > 0 && ` (${tags.length})`}
+        </p>
+
+        {/* Site tags — always visible, styled with their configured colours */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`sticker cursor-pointer text-[0.75rem] transition-all ${
+                tags.includes(tag) ? 'bg-ink !text-bg shadow-[2px_2px_0_var(--orange)]' : 'opacity-40 hover:opacity-70'
+              }`}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </button>
-        {tagsOpen && (
-          <div className="px-4 pb-4 border-t border-gray-100">
-            <div className="flex flex-wrap gap-2 mt-3 mb-2">
-              {availableTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-all ${
-                    tags.includes(tag)
-                      ? 'border-black bg-black text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={customTag}
-                onChange={(e) => setCustomTag(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
-                placeholder="Add custom tag…"
-                className="text-sm border border-gray-200 rounded-md px-3 py-1.5 outline-none focus:border-gray-400 w-48"
-              />
-              {tags.filter((t) => !availableTags.includes(t)).map((t) => (
-                <span
-                  key={t}
-                  className="flex items-center gap-1 px-3 py-1 rounded-full text-sm border border-gray-300 text-gray-600"
-                >
-                  {t}
-                  <button
-                    type="button"
-                    onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
-                    className="text-gray-400 hover:text-black ml-0.5"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+              {tag}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom tags + input */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <input
+            value={customTag}
+            onChange={(e) => setCustomTag(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
+            placeholder="Add custom tag…"
+            className="text-sm border border-gray-200 rounded-md px-3 py-1.5 outline-none focus:border-gray-400 w-48"
+          />
+          {tags.filter((t) => !availableTags.includes(t)).map((t) => (
+            <span
+              key={t}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-sm border border-gray-300 text-gray-600"
+            >
+              {t}
+              <button
+                type="button"
+                onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                className="text-gray-400 hover:text-black ml-0.5"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Related to — link picker */}
@@ -458,73 +439,138 @@ export default function WritingEditorForm({
             </div>
           )}
 
-          {/* Crowdfunding (Backed Projects) */}
-          {(linkableEntities!.crowdfunding?.length ?? 0) > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 mb-1.5">Backed Projects</p>
-              <div className="flex flex-wrap gap-2">
-                {linkableEntities!.crowdfunding!.map((cf) => (
-                  <button
-                    key={cf.id}
-                    type="button"
-                    onClick={() => toggleLink('crowdfunding', cf.id)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-all ${
-                      isLinked('crowdfunding', cf.id)
-                        ? 'border-orange bg-orange text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    {cf.name}
-                  </button>
-                ))}
+          {/* Crowdfunding (Backed Projects) — collapsed to 8, expandable */}
+          {(linkableEntities!.crowdfunding?.length ?? 0) > 0 && (() => {
+            const allBacked = linkableEntities!.crowdfunding!
+            const limit = 8
+            const shown = backedExpanded ? allBacked : allBacked.slice(0, limit)
+            const hasMore = allBacked.length > limit
+            return (
+              <div className="mb-3">
+                <p className="text-xs text-gray-400 mb-1.5">Backed Projects</p>
+                <div className="flex flex-wrap gap-2">
+                  {shown.map((cf) => (
+                    <button
+                      key={cf.id}
+                      type="button"
+                      onClick={() => toggleLink('crowdfunding', cf.id)}
+                      className={`px-3 py-1 rounded-full text-sm border transition-all ${
+                        isLinked('crowdfunding', cf.id)
+                          ? 'border-orange bg-orange text-white'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-400'
+                      }`}
+                    >
+                      {cf.name}
+                    </button>
+                  ))}
+                  {hasMore && !backedExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setBackedExpanded(true)}
+                      className="px-3 py-1 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      +{allBacked.length - limit} more…
+                    </button>
+                  )}
+                  {backedExpanded && hasMore && (
+                    <button
+                      type="button"
+                      onClick={() => setBackedExpanded(false)}
+                      className="px-3 py-1 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      Show less
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
-          {/* Likes */}
-          {linkableEntities!.likes.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 mb-1.5">Likes</p>
-              <div className="flex flex-wrap gap-2">
-                {linkableEntities!.likes.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => toggleLink('like', l.id)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-all ${
-                      isLinked('like', l.id)
-                        ? 'border-green-600 bg-green-600 text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
+          {/* Likes — collapsed to 10, expandable */}
+          {linkableEntities!.likes.length > 0 && (() => {
+            const all = linkableEntities!.likes
+            const limit = 10
+            const shown = hashtagsExpanded ? all : all.slice(0, limit)
+            const hasMore = all.length > limit
+            return (
+              <div className="mb-3">
+                <p className="text-xs text-gray-400 mb-1.5">Likes</p>
+                <div className="flex flex-wrap gap-2">
+                  {shown.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => toggleLink('like', l.id)}
+                      className={`px-3 py-1 rounded-full text-sm border transition-all ${
+                        isLinked('like', l.id)
+                          ? 'border-green-600 bg-green-600 text-white'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-400'
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                  {hasMore && !hashtagsExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setHashtagsExpanded(true)}
+                      className="px-3 py-1 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      +{all.length - limit} more…
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
-          {/* Dislikes */}
-          {linkableEntities!.dislikes.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 mb-1.5">Hates</p>
-              <div className="flex flex-wrap gap-2">
-                {linkableEntities!.dislikes.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => toggleLink('dislike', d.id)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-all ${
-                      isLinked('dislike', d.id)
-                        ? 'border-red-600 bg-red-600 text-white'
-                        : 'border-gray-200 text-gray-500 hover:border-gray-400'
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+          {/* Dislikes — collapsed to 10, expandable (shares expand state with likes) */}
+          {linkableEntities!.dislikes.length > 0 && (() => {
+            const all = linkableEntities!.dislikes
+            const limit = 10
+            const shown = hashtagsExpanded ? all : all.slice(0, limit)
+            const hasMore = all.length > limit
+            return (
+              <div className="mb-3">
+                <p className="text-xs text-gray-400 mb-1.5">Hates</p>
+                <div className="flex flex-wrap gap-2">
+                  {shown.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => toggleLink('dislike', d.id)}
+                      className={`px-3 py-1 rounded-full text-sm border transition-all ${
+                        isLinked('dislike', d.id)
+                          ? 'border-red-600 bg-red-600 text-white'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-400'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                  {hasMore && !hashtagsExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setHashtagsExpanded(true)}
+                      className="px-3 py-1 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      +{all.length - limit} more…
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )
+          })()}
+
+          {/* Show less for likes/dislikes */}
+          {hashtagsExpanded && (linkableEntities!.likes.length > 10 || linkableEntities!.dislikes.length > 10) && (
+            <button
+              type="button"
+              onClick={() => setHashtagsExpanded(false)}
+              className="text-xs text-gray-400 hover:text-gray-700 transition-colors mt-1"
+            >
+              Show less
+            </button>
           )}
         </div>
       )}
