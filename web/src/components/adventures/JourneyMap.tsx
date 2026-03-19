@@ -85,15 +85,26 @@ export default function JourneyMap({ waypoints, className = '', mode = 'journey'
         }).addTo(map)
       }
 
-      const markers: L.LatLng[] = []
+      const allPoints: L.LatLng[] = []
 
       if (mode === 'journey') {
         // Journey mode: bold numbered circles, thick dashed route
-        resolved.forEach((wp, i) => {
-          const latlng = L.latLng(wp.coords[0], wp.coords[1])
-          markers.push(latlng)
+        // Build full route path (including duplicate locations for the line)
+        resolved.forEach((wp) => {
+          allPoints.push(L.latLng(wp.coords[0], wp.coords[1]))
+        })
 
-          // Numbered circle marker
+        // Only place markers on unique locations (first occurrence)
+        const seen = new Set<string>()
+        let markerNum = 0
+        resolved.forEach((wp, i) => {
+          const key = `${wp.coords[0].toFixed(2)},${wp.coords[1].toFixed(2)}`
+          if (seen.has(key)) return
+          seen.add(key)
+          markerNum++
+
+          const latlng = L.latLng(wp.coords[0], wp.coords[1])
+
           const icon = L.divIcon({
             className: '',
             html: `<div style="
@@ -103,26 +114,25 @@ export default function JourneyMap({ waypoints, className = '', mode = 'journey'
               font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
               color: var(--ink, #1a1a1a);
               box-shadow: 2px 2px 0 var(--ink, #1a1a1a);
-            ">${i + 1}</div>`,
+            ">${markerNum}</div>`,
             iconSize: [28, 28],
             iconAnchor: [14, 14],
           })
 
           const marker = L.marker(latlng, { icon }).addTo(map)
 
-          // Label
           marker.bindTooltip(wp.name.toUpperCase(), {
             permanent: true,
-            direction: i % 2 === 0 ? 'right' : 'left',
-            offset: i % 2 === 0 ? L.point(18, 0) : L.point(-18, 0),
+            direction: markerNum % 2 !== 0 ? 'right' : 'left',
+            offset: markerNum % 2 !== 0 ? L.point(18, 0) : L.point(-18, 0),
             className: 'journey-label',
           })
         })
 
-        // Bold dashed route line
-        if (markers.length > 1) {
-          L.polyline(markers, {
-            color: '#1a1a1a', // ink
+        // Bold dashed route line through ALL points (including return legs)
+        if (allPoints.length > 1) {
+          L.polyline(allPoints, {
+            color: '#1a1a1a',
             weight: 4,
             opacity: 0.8,
             dashArray: '12 8',
@@ -132,7 +142,7 @@ export default function JourneyMap({ waypoints, className = '', mode = 'journey'
         // Detailed mode: standard markers with popups
         resolved.forEach((wp, i) => {
           const latlng = L.latLng(wp.coords[0], wp.coords[1])
-          markers.push(latlng)
+          allPoints.push(latlng)
 
           const icon = L.divIcon({
             className: '',
@@ -152,8 +162,8 @@ export default function JourneyMap({ waypoints, className = '', mode = 'journey'
         })
 
         // Solid route line
-        if (markers.length > 1) {
-          L.polyline(markers, {
+        if (allPoints.length > 1) {
+          L.polyline(allPoints, {
             color: '#ff6b35', // orange
             weight: 3,
             opacity: 0.7,
@@ -162,8 +172,8 @@ export default function JourneyMap({ waypoints, className = '', mode = 'journey'
       }
 
       // Fit bounds
-      if (markers.length > 0) {
-        const bounds = L.latLngBounds(markers)
+      if (allPoints.length > 0) {
+        const bounds = L.latLngBounds(allPoints)
         map.fitBounds(bounds, { padding: [50, 50] })
       }
     })
