@@ -133,63 +133,18 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
       + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   }
 
-  const renderPost = (post: AdventurePost) => {
-    const meta = POST_TYPE_LABELS[post.post_type as PostType] ?? POST_TYPE_LABELS.micro
-    const chapterLabel = post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index]
-      ? `Ch.${post.chapter_index + 1}: ${chapters[post.chapter_index].title}`
-      : null
-    return (
-      <div key={post.id} className="border-3 border-ink/20 p-4 bg-bg-card group">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-[0.6rem] font-bold uppercase text-ink-muted">
-              {meta.icon} {meta.label}
-            </span>
-            {post.location_name && (
-              <span className="font-mono text-[0.6rem] text-orange">📍 {post.location_name}</span>
-            )}
-            {viewMode === 'timeline' && chapterLabel && (
-              <span className="font-mono text-[0.55rem] px-1.5 py-0.5 bg-ink/5 text-ink-muted">{chapterLabel}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Chapter assignment */}
-            {chapters.length > 0 && (
-              <select
-                value={post.chapter_index ?? ''}
-                onChange={(e) => handleAssignChapter(post.id, e.target.value === '' ? null : Number(e.target.value))}
-                className="font-mono text-[0.55rem] text-ink-muted bg-transparent border border-transparent hover:border-ink/20 focus:border-ink/30 px-1 py-0.5 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all outline-none"
-              >
-                <option value="">No chapter</option>
-                {chapters.map((ch, i) => (
-                  <option key={i} value={i}>Ch.{i + 1}: {ch.title}</option>
-                ))}
-              </select>
-            )}
-            <span className="font-mono text-[0.55rem] text-ink-muted">{formatDate(post.posted_at)}</span>
-            <button
-              type="button"
-              onClick={() => handleDelete(post.id)}
-              className="font-mono text-[0.55rem] text-ink-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-        {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
-        {post.photos && (post.photos as { url: string }[]).length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-2">
-            {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-              <div key={i} className="w-24 h-24 border-2 border-ink/10 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const renderPost = (post: AdventurePost) => (
+    <PostCard
+      key={post.id}
+      post={post}
+      chapters={chapters}
+      viewMode={viewMode}
+      onDelete={handleDelete}
+      onAssignChapter={handleAssignChapter}
+      onUpdate={(updated) => setPosts((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p))}
+      formatDate={formatDate}
+    />
+  )
 
   return (
     <div className="mt-10 border-t-3 border-ink pt-8">
@@ -418,6 +373,149 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
         <div className="space-y-4">
           {posts.map((post) => renderPost(post))}
         </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Inline-editable post card ── */
+function PostCard({
+  post, chapters, viewMode, onDelete, onAssignChapter, onUpdate, formatDate,
+}: {
+  post: AdventurePost
+  chapters: Chapter[]
+  viewMode: string
+  onDelete: (id: string) => void
+  onAssignChapter: (id: string, ci: number | null) => void
+  onUpdate: (updated: Partial<AdventurePost> & { id: string }) => void
+  formatDate: (d: string) => string
+}) {
+  const [editing, setEditing] = useState(false)
+  const [editBody, setEditBody] = useState(post.body ?? '')
+  const [editLocation, setEditLocation] = useState(post.location_name ?? '')
+  const [saving, setSaving] = useState(false)
+
+  const meta = POST_TYPE_LABELS[post.post_type as PostType] ?? POST_TYPE_LABELS.micro
+  const chapterLabel = post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index]
+    ? `Ch.${post.chapter_index + 1}: ${chapters[post.chapter_index].title}`
+    : null
+
+  const handleSave = async () => {
+    setSaving(true)
+    const res = await fetch(`/api/adventure-posts/${post.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        body: editBody.trim() || null,
+        location_name: editLocation.trim() || null,
+      }),
+    })
+    if (res.ok) {
+      onUpdate({ id: post.id, body: editBody.trim() || null, location_name: editLocation.trim() || null })
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  const handleCancel = () => {
+    setEditBody(post.body ?? '')
+    setEditLocation(post.location_name ?? '')
+    setEditing(false)
+  }
+
+  return (
+    <div className="border-3 border-ink/20 p-4 bg-bg-card group">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-[0.6rem] font-bold uppercase text-ink-muted">
+            {meta.icon} {meta.label}
+          </span>
+          {!editing && post.location_name && (
+            <span className="font-mono text-[0.6rem] text-orange">📍 {post.location_name}</span>
+          )}
+          {viewMode === 'timeline' && chapterLabel && (
+            <span className="font-mono text-[0.55rem] px-1.5 py-0.5 bg-ink/5 text-ink-muted">{chapterLabel}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {chapters.length > 0 && (
+            <select
+              value={post.chapter_index ?? ''}
+              onChange={(e) => onAssignChapter(post.id, e.target.value === '' ? null : Number(e.target.value))}
+              className="font-mono text-[0.55rem] text-ink-muted bg-transparent border border-transparent hover:border-ink/20 focus:border-ink/30 px-1 py-0.5 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all outline-none"
+            >
+              <option value="">No chapter</option>
+              {chapters.map((ch, i) => (
+                <option key={i} value={i}>Ch.{i + 1}: {ch.title}</option>
+              ))}
+            </select>
+          )}
+          <span className="font-mono text-[0.55rem] text-ink-muted">{formatDate(post.posted_at)}</span>
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="font-mono text-[0.55rem] text-ink-muted hover:text-ink opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            >
+              Edit
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onDelete(post.id)}
+            className="font-mono text-[0.55rem] text-ink-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="space-y-2 mt-2">
+          <textarea
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 border-3 border-ink bg-bg font-body text-[0.88rem] focus:outline-none focus:shadow-[3px_3px_0_var(--ink)] transition-shadow resize-y"
+          />
+          <input
+            value={editLocation}
+            onChange={(e) => setEditLocation(e.target.value)}
+            placeholder="📍 Location (optional)"
+            className="w-full px-3 py-2 border-2 border-ink/20 bg-bg font-mono text-[0.75rem] focus:outline-none focus:border-ink/50 transition-colors"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-1.5 bg-ink text-bg font-mono text-[0.65rem] font-bold uppercase border-2 border-ink hover:bg-orange hover:border-orange transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="font-mono text-[0.65rem] text-ink-muted hover:text-ink cursor-pointer transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
+          {post.photos && (post.photos as { url: string }[]).length > 0 && (
+            <div className="flex gap-2 flex-wrap mt-2">
+              {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
+                <div key={i} className="w-24 h-24 border-2 border-ink/10 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
