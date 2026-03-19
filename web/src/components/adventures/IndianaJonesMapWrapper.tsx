@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import type { Waypoint } from '@/lib/adventures'
 
-const IndianaJonesMap = dynamic(() => import('./IndianaJonesMap'), { ssr: false })
+const JourneyMap = dynamic(() => import('./JourneyMap'), { ssr: false })
 
 interface Props {
   waypoints: Waypoint[]
@@ -11,5 +11,5 @@ interface Props {
 }
 
 export default function IndianaJonesMapWrapper({ waypoints, className }: Props) {
-  return <IndianaJonesMap waypoints={waypoints} className={className} />
+  return <JourneyMap waypoints={waypoints} mode="journey" className={className} />
 }

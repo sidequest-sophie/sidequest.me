@@ -4,8 +4,7 @@ import { useState } from 'react'
 import type { Waypoint } from '@/lib/adventures'
 import dynamic from 'next/dynamic'
 
-const IndianaJonesMap = dynamic(() => import('./IndianaJonesMap'), { ssr: false })
-const AdventureMap = dynamic(() => import('./AdventureMap'), { ssr: false })
+const JourneyMap = dynamic(() => import('./JourneyMap'), { ssr: false })
 
 interface MapModeToggleProps {
   waypoints: Waypoint[]
@@ -43,11 +42,12 @@ export default function MapModeToggle({ waypoints, hasCoords }: MapModeTogglePro
 
       {/* Map */}
       <div className="border-3 border-ink overflow-hidden">
-        {mode === 'journey' ? (
-          <IndianaJonesMap waypoints={waypoints} className="h-[350px]" />
-        ) : (
-          <AdventureMap waypoints={waypoints} className="h-[400px]" />
-        )}
+        <JourneyMap
+          key={mode}
+          waypoints={waypoints}
+          mode={mode}
+          className={mode === 'journey' ? 'h-[350px]' : 'h-[400px]'}
+        />
       </div>
     </div>
   )
