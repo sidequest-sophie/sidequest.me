@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { Adventure, AdventurePost, Chapter, LayoutTheme, Waypoint } from '@/lib/adventures'
 import { THEME_META, STATUS_META } from '@/lib/adventures'
 import AdventureMapWrapper from '@/components/adventures/AdventureMapWrapper'
+import IndianaJonesMapWrapper from '@/components/adventures/IndianaJonesMapWrapper'
+import MapModeToggle from '@/components/adventures/MapModeToggle'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -136,6 +138,13 @@ export default async function AdventurePage({ params }: Props) {
           >
             ✏️ Edit this adventure
           </Link>
+        </div>
+      )}
+
+      {/* Journey map for non-map themes (shows the route overview) */}
+      {theme !== 'map' && routeNames.length > 1 && (
+        <div className="mb-8 border-3 border-ink overflow-hidden">
+          <IndianaJonesMapWrapper waypoints={(adventure.route ?? []) as Waypoint[]} className="h-[250px]" />
         </div>
       )}
 
@@ -272,18 +281,9 @@ export default async function AdventurePage({ params }: Props) {
         const noLocation = allPosts.filter((p) => !p.location_name)
         return (
           <div className="space-y-8">
-            {/* Real map with pins and route */}
-            {hasCoords && (
-              <div className="border-3 border-ink overflow-hidden">
-                <AdventureMapWrapper waypoints={waypoints} className="h-[400px]" />
-              </div>
-            )}
-
-            {/* Route summary if no coordinates */}
-            {!hasCoords && waypoints.length > 1 && (
-              <div className="px-4 py-3 bg-ink/5 border-2 border-ink/10 font-mono text-[0.75rem]">
-                🗺️ {waypoints.filter((w) => w.name.trim()).map((w) => w.name.trim()).join(' → ')}
-              </div>
+            {/* Map — Journey (Indiana Jones) + Detailed toggle */}
+            {waypoints.length > 1 && (
+              <MapModeToggle waypoints={waypoints} hasCoords={hasCoords} />
             )}
 
             {/* Posts grouped by chapter (with location context) */}
