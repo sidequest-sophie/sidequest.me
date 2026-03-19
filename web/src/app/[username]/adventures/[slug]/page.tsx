@@ -70,6 +70,46 @@ export default async function AdventurePage({ params }: Props) {
     }
   }
 
+  // Helper: render article preview card or regular post content
+  const renderPostContent = (post: AdventurePost) => {
+    if (post.post_type === 'article_link' && post.linked_writing_id && linkedWritings.has(post.linked_writing_id)) {
+      const w = linkedWritings.get(post.linked_writing_id!)!
+      const excerpt = w.body_html ? excerptFromHtml(w.body_html, 180) : null
+      return (
+        <Link href={`/${username}/writings/${w.slug}`} className="block no-underline group/card">
+          <div className="border-3 border-ink/15 bg-bg-card overflow-hidden hover:border-ink/30 transition-colors">
+            {w.image_url && (
+              <div className="w-full h-40 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={w.image_url} alt={w.title} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300" />
+              </div>
+            )}
+            <div className="p-4">
+              <h4 className="font-head font-bold text-[0.95rem] uppercase leading-tight mb-1 group-hover/card:text-orange transition-colors">{w.title}</h4>
+              {excerpt && <p className="text-[0.78rem] opacity-50 leading-relaxed line-clamp-2">{excerpt}</p>}
+              <span className="font-mono text-[0.6rem] text-orange uppercase mt-2 inline-block">Read story →</span>
+            </div>
+          </div>
+        </Link>
+      )
+    }
+    return (
+      <>
+        {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
+        {post.photos && (post.photos as { url: string }[]).length > 0 && (
+          <div className="flex gap-2 flex-wrap mt-2">
+            {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
+              <div key={i} className="border-2 border-ink/10 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={photo.caption ?? ''} className="max-w-[300px] h-auto" />
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    )
+  }
+
   const formatDate = (d: string) => {
     const date = new Date(d)
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -202,42 +242,7 @@ export default async function AdventurePage({ params }: Props) {
                       {formatDateTime(post.posted_at)}
                       {post.location_name && <span className="text-orange ml-2">📍 {post.location_name}</span>}
                     </div>
-                    {/* Article link: writing preview card */}
-                    {post.post_type === 'article_link' && post.linked_writing_id && linkedWritings.has(post.linked_writing_id) ? (() => {
-                      const w = linkedWritings.get(post.linked_writing_id!)!
-                      const excerpt = w.body_html ? excerptFromHtml(w.body_html, 180) : null
-                      return (
-                        <Link href={`/${username}/writings/${w.slug}`} className="block no-underline group/card">
-                          <div className="border-3 border-ink/15 bg-bg-card overflow-hidden hover:border-ink/30 transition-colors">
-                            {w.image_url && (
-                              <div className="w-full h-40 overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={w.image_url} alt={w.title} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-300" />
-                              </div>
-                            )}
-                            <div className="p-4">
-                              <h4 className="font-head font-bold text-[0.95rem] uppercase leading-tight mb-1 group-hover/card:text-orange transition-colors">{w.title}</h4>
-                              {excerpt && <p className="text-[0.78rem] opacity-50 leading-relaxed line-clamp-2">{excerpt}</p>}
-                              <span className="font-mono text-[0.6rem] text-orange uppercase mt-2 inline-block">Read story →</span>
-                            </div>
-                          </div>
-                        </Link>
-                      )
-                    })() : (
-                      <>
-                        {post.body && <p className="text-[0.92rem] leading-relaxed mb-2">{post.body}</p>}
-                        {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                          <div className="flex gap-2 flex-wrap mt-2">
-                            {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                              <div key={i} className="border-2 border-ink/10 overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={photo.url} alt={photo.caption ?? ''} className="max-w-[300px] h-auto" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {renderPostContent(post)}
                   </div>
                 </div>
               )
@@ -344,17 +349,7 @@ export default async function AdventurePage({ params }: Props) {
                     <div className="space-y-4 pl-4 border-l-2 border-orange/20">
                       {chPosts.map((post) => (
                         <div key={post.id}>
-                          {post.body && <p className="text-[0.88rem] leading-relaxed mb-1">{post.body}</p>}
-                          {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                            <div className="flex gap-2 flex-wrap mt-1">
-                              {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                                <div key={i} className="w-32 h-32 border-2 border-ink/10 overflow-hidden">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          {renderPostContent(post)}
                           {post.location_name && (
                             <div className="font-mono text-[0.55rem] text-orange mt-1">📍 {post.location_name}</div>
                           )}
