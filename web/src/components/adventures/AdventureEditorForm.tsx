@@ -460,6 +460,18 @@ export default function AdventureEditorForm({ username, adventure }: AdventureEd
           {isPending ? 'Saving…' : saved ? 'Saved ✓' : isNew ? 'Create adventure' : 'Save changes'}
         </button>
 
+        {/* Preview */}
+        {!isNew && (
+          <a
+            href={`/${username}/adventures/${slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm px-4 py-2.5 border border-gray-200 rounded-lg hover:border-gray-400 text-gray-600 transition-colors no-underline inline-block"
+          >
+            👁️ Preview
+          </a>
+        )}
+
         {/* Delete */}
         {!isNew && (
           confirmDelete ? (
