@@ -113,6 +113,19 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
     }
   }
 
+  const handleAssignChapter = async (postId: string, newChapterIndex: number | null) => {
+    const res = await fetch(`/api/adventure-posts/${postId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chapter_index: newChapterIndex }),
+    })
+    if (res.ok) {
+      setPosts((prev) => prev.map((p) =>
+        p.id === postId ? { ...p, chapter_index: newChapterIndex } : p
+      ))
+    }
+  }
+
   const formatDate = (d: string) => {
     const date = new Date(d)
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -140,6 +153,19 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Chapter assignment */}
+            {chapters.length > 0 && (
+              <select
+                value={post.chapter_index ?? ''}
+                onChange={(e) => handleAssignChapter(post.id, e.target.value === '' ? null : Number(e.target.value))}
+                className="font-mono text-[0.55rem] text-ink-muted bg-transparent border border-transparent hover:border-ink/20 focus:border-ink/30 px-1 py-0.5 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all outline-none"
+              >
+                <option value="">No chapter</option>
+                {chapters.map((ch, i) => (
+                  <option key={i} value={i}>Ch.{i + 1}: {ch.title}</option>
+                ))}
+              </select>
+            )}
             <span className="font-mono text-[0.55rem] text-ink-muted">{formatDate(post.posted_at)}</span>
             <button
               type="button"
