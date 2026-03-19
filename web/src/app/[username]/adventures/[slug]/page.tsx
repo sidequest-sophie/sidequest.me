@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { Adventure, AdventurePost, Chapter, LayoutTheme } from '@/lib/adventures'
+import type { Adventure, AdventurePost, Chapter, LayoutTheme, Waypoint } from '@/lib/adventures'
 import { THEME_META, STATUS_META } from '@/lib/adventures'
+import AdventureMapWrapper from '@/components/adventures/AdventureMapWrapper'
 
 interface Props {
   params: Promise<{ username: string; slug: string }>
@@ -141,35 +142,57 @@ export default async function AdventurePage({ params }: Props) {
       {/* ══════ LAYOUT THEME RENDERING ══════ */}
 
       {/* ── Journal Timeline ── */}
-      {theme === 'journal' && (
-        <div className="relative pl-8 border-l-2 border-ink/10">
-          {allPosts.map((post) => (
-            <div key={post.id} className="mb-8 relative">
-              <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 ${
-                post.post_type === 'photo' ? 'bg-yellow border-yellow' :
-                post.post_type === 'checkin' ? 'bg-orange border-orange' :
-                post.post_type === 'article_link' ? 'bg-green border-green' :
-                'bg-ink/30 border-ink/30'
-              }`} />
-              <div className="font-mono text-[0.6rem] text-ink-muted uppercase mb-2">
-                {formatDateTime(post.posted_at)}
-                {post.location_name && <span className="text-orange ml-2">📍 {post.location_name}</span>}
-              </div>
-              {post.body && <p className="text-[0.92rem] leading-relaxed mb-2">{post.body}</p>}
-              {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-2">
-                  {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                    <div key={i} className="border-2 border-ink/10 overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo.url} alt={photo.caption ?? ''} className="max-w-[300px] h-auto" />
-                    </div>
-                  ))}
+      {theme === 'journal' && (() => {
+        // Group posts by chapter, inserting chapter headers
+        let lastChapter: number | null | undefined = -999
+        return (
+          <div className="relative pl-8 border-l-2 border-ink/10">
+            {allPosts.map((post) => {
+              const showChapterHeader = chapters.length > 0 && post.chapter_index !== lastChapter
+              const chapterNode = showChapterHeader && post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index] ? (
+                <div key={`ch-${post.chapter_index}`} className="mb-6 -ml-8 pl-8 relative">
+                  <div className="absolute -left-[9px] top-2 w-5 h-5 rounded-full bg-orange border-2 border-bg flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-bg">{post.chapter_index + 1}</span>
+                  </div>
+                  <div className="pb-2 border-b-2 border-ink/10">
+                    <span className="font-mono text-[0.6rem] text-orange uppercase">Chapter {post.chapter_index + 1}</span>
+                    <h3 className="font-head font-[900] text-[1.1rem] uppercase">{chapters[post.chapter_index].title}</h3>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              ) : null
+              lastChapter = post.chapter_index
+              return (
+                <div key={post.id}>
+                  {chapterNode}
+                  <div className="mb-8 relative">
+                    <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 ${
+                      post.post_type === 'photo' ? 'bg-yellow border-yellow' :
+                      post.post_type === 'checkin' ? 'bg-orange border-orange' :
+                      post.post_type === 'article_link' ? 'bg-green border-green' :
+                      'bg-ink/30 border-ink/30'
+                    }`} />
+                    <div className="font-mono text-[0.6rem] text-ink-muted uppercase mb-2">
+                      {formatDateTime(post.posted_at)}
+                      {post.location_name && <span className="text-orange ml-2">📍 {post.location_name}</span>}
+                    </div>
+                    {post.body && <p className="text-[0.92rem] leading-relaxed mb-2">{post.body}</p>}
+                    {post.photos && (post.photos as { url: string }[]).length > 0 && (
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
+                          <div key={i} className="border-2 border-ink/10 overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photo.url} alt={photo.caption ?? ''} className="max-w-[300px] h-auto" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* ── Magazine (chapter-based) ── */}
       {theme === 'magazine' && (
@@ -230,6 +253,9 @@ export default async function AdventurePage({ params }: Props) {
               )}
               {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
               <div className="font-mono text-[0.55rem] text-ink-muted">
+                {post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index] && (
+                  <span className="text-orange mr-2">Ch.{post.chapter_index + 1}: {chapters[post.chapter_index].title}</span>
+                )}
                 {formatDateTime(post.posted_at)}
                 {post.location_name && <span className="ml-2">📍 {post.location_name}</span>}
               </div>
@@ -238,62 +264,104 @@ export default async function AdventurePage({ params }: Props) {
         </div>
       )}
 
-      {/* ── Map-First (simple list grouped by location for now) ── */}
-      {theme === 'map' && (
-        <div className="space-y-8">
-          {(() => {
-            const locations = [...new Set(allPosts.filter((p) => p.location_name).map((p) => p.location_name!))]
-            const noLocation = allPosts.filter((p) => !p.location_name)
-            return (
-              <>
-                {locations.map((loc) => {
-                  const locPosts = allPosts.filter((p) => p.location_name === loc)
-                  return (
-                    <div key={loc}>
-                      <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-ink/10">
-                        <span className="text-orange">📍</span>
-                        <span className="font-head font-bold text-[0.9rem] uppercase">{loc}</span>
-                        <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{locPosts.length} posts</span>
-                      </div>
-                      <div className="space-y-4 pl-4 border-l-2 border-orange/20">
-                        {locPosts.map((post) => (
-                          <div key={post.id}>
-                            {post.body && <p className="text-[0.88rem] leading-relaxed mb-1">{post.body}</p>}
-                            {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                              <div className="flex gap-2 flex-wrap mt-1">
-                                {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                                  <div key={i} className="w-32 h-32 border-2 border-ink/10 overflow-hidden">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="font-mono text-[0.5rem] text-ink-muted mt-1">{formatDateTime(post.posted_at)}</div>
-                          </div>
-                        ))}
-                      </div>
+      {/* ── Map-First ── */}
+      {theme === 'map' && (() => {
+        const waypoints = (adventure.route ?? []) as Waypoint[]
+        const hasCoords = waypoints.some((w) => w.lat && w.lng)
+        const locations = [...new Set(allPosts.filter((p) => p.location_name).map((p) => p.location_name!))]
+        const noLocation = allPosts.filter((p) => !p.location_name)
+        return (
+          <div className="space-y-8">
+            {/* Real map with pins and route */}
+            {hasCoords && (
+              <div className="border-3 border-ink overflow-hidden">
+                <AdventureMapWrapper waypoints={waypoints} className="h-[400px]" />
+              </div>
+            )}
+
+            {/* Route summary if no coordinates */}
+            {!hasCoords && waypoints.length > 1 && (
+              <div className="px-4 py-3 bg-ink/5 border-2 border-ink/10 font-mono text-[0.75rem]">
+                🗺️ {waypoints.filter((w) => w.name.trim()).map((w) => w.name.trim()).join(' → ')}
+              </div>
+            )}
+
+            {/* Posts grouped by chapter (with location context) */}
+            {chapters.length > 0 ? (
+              chapters.map((ch, ci) => {
+                const chPosts = allPosts.filter((p) => p.chapter_index === ci)
+                if (chPosts.length === 0) return null
+                return (
+                  <div key={ci}>
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-ink/10">
+                      <span className="text-orange font-mono text-[0.6rem] font-bold">📍 {ci + 1}</span>
+                      <span className="font-head font-bold text-[0.9rem] uppercase">{ch.title}</span>
+                      <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{chPosts.length} posts</span>
                     </div>
-                  )
-                })}
-                {noLocation.length > 0 && (
-                  <div>
-                    <div className="font-head font-bold text-[0.85rem] uppercase text-ink-muted mb-3 pb-2 border-b-2 border-ink/10">Other posts</div>
-                    <div className="space-y-4 pl-4">
-                      {noLocation.map((post) => (
+                    <div className="space-y-4 pl-4 border-l-2 border-orange/20">
+                      {chPosts.map((post) => (
                         <div key={post.id}>
-                          {post.body && <p className="text-[0.88rem] leading-relaxed">{post.body}</p>}
+                          {post.body && <p className="text-[0.88rem] leading-relaxed mb-1">{post.body}</p>}
+                          {post.photos && (post.photos as { url: string }[]).length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-1">
+                              {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
+                                <div key={i} className="w-32 h-32 border-2 border-ink/10 overflow-hidden">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {post.location_name && (
+                            <div className="font-mono text-[0.55rem] text-orange mt-1">📍 {post.location_name}</div>
+                          )}
                           <div className="font-mono text-[0.5rem] text-ink-muted mt-1">{formatDateTime(post.posted_at)}</div>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
-              </>
-            )
-          })()}
-        </div>
-      )}
+                )
+              })
+            ) : (
+              /* Fallback: group by location name */
+              locations.map((loc) => {
+                const locPosts = allPosts.filter((p) => p.location_name === loc)
+                return (
+                  <div key={loc}>
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-ink/10">
+                      <span className="text-orange">📍</span>
+                      <span className="font-head font-bold text-[0.9rem] uppercase">{loc}</span>
+                      <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{locPosts.length} posts</span>
+                    </div>
+                    <div className="space-y-4 pl-4 border-l-2 border-orange/20">
+                      {locPosts.map((post) => (
+                        <div key={post.id}>
+                          {post.body && <p className="text-[0.88rem] leading-relaxed mb-1">{post.body}</p>}
+                          <div className="font-mono text-[0.5rem] text-ink-muted mt-1">{formatDateTime(post.posted_at)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+
+            {noLocation.length > 0 && !chapters.length && (
+              <div>
+                <div className="font-head font-bold text-[0.85rem] uppercase text-ink-muted mb-3 pb-2 border-b-2 border-ink/10">Other posts</div>
+                <div className="space-y-4 pl-4">
+                  {noLocation.map((post) => (
+                    <div key={post.id}>
+                      {post.body && <p className="text-[0.88rem] leading-relaxed">{post.body}</p>}
+                      <div className="font-mono text-[0.5rem] text-ink-muted mt-1">{formatDateTime(post.posted_at)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Dashboard ── */}
       {theme === 'dashboard' && (
