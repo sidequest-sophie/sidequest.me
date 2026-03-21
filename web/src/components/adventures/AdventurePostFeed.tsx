@@ -727,7 +727,7 @@ function PostCard({
           ) : (
             <>
               {post.body && (
-                <p className="text-[0.88rem] leading-relaxed mb-3">{post.body}</p>
+                <p className="text-[0.88rem] leading-relaxed mb-3 whitespace-pre-wrap">{post.body}</p>
               )}
               {normalizedPhotos.length > 0 && (
                 <PhotoDisplay
