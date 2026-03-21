@@ -10,7 +10,8 @@ export type MicroblogSource =
   | "native"
   | "facebook_import"
   | "telegram_channel_import"
-  | "telegram_group_import";
+  | "telegram_group_import"
+  | "adventure_import";
 
 export interface MicroblogImage {
   url: string;
@@ -47,6 +48,10 @@ export interface MicroblogPost {
   source_url: string | null;
   source_created_at: string | null;
   paired_writing_id: string | null;
+  context_type: 'adventure' | 'project' | 'writing' | 'job_role' | null;
+  context_id: string | null;
+  location_name: string | null;
+  chapter_index: number | null;
   edited_at: string | null;
   published_at: string | null;
   scheduled_at: string | null;

@@ -22,9 +22,24 @@ export function MicroblogCard({ post, username }: Props) {
         <span className="sticker sticker-orange text-[0.55rem] !px-2 !py-0.5 !border-2">
           Microblog
         </span>
-        {post.source !== "native" && (
+        {post.source !== "native" && post.source !== "adventure_import" && (
           <span className="text-[0.55rem] font-mono opacity-30">
             via {post.source === "facebook_import" ? "Facebook" : "Telegram"}
+          </span>
+        )}
+        {post.context_type && (
+          <span className="text-[0.55rem] font-mono opacity-50 flex items-center gap-1">
+            ✦{" "}
+            {post.context_type === "adventure"
+              ? "Adventure"
+              : post.context_type === "project"
+                ? "Project"
+                : post.context_type === "writing"
+                  ? "Writing"
+                  : "Role"}
+            {post.location_name && (
+              <span className="opacity-70">· {post.location_name}</span>
+            )}
           </span>
         )}
         {post.pinned && (
