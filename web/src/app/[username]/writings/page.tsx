@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import type { Writing } from '@/lib/writings'
 import { excerptFromHtml, readTimeMinutes } from '@/lib/writings'
@@ -13,6 +12,79 @@ interface Props {
 }
 
 const PER_PAGE = 20
+
+/* ── Context badge helpers ── */
+type CtxCompany = {
+  kind: 'company'
+  name: string
+  logo: string | null       // path e.g. /logos/hackthebox.svg
+  logo_text: string | null
+  brand_colour: string | null
+  is_primary: boolean
+}
+
+type WritingCtx = {
+  primary: CtxCompany | null
+  secondaries: CtxCompany[]
+  /** Key used for run-detection — changes when the primary context changes */
+  runKey: string
+}
+
+function buildCtx(companies: CtxCompany[]): WritingCtx {
+  if (companies.length === 0) {
+    return { primary: null, secondaries: [], runKey: 'personal' }
+  }
+
+  // If exactly one has is_primary=true, use it; otherwise fall back to first
+  const primary = companies.find((c) => c.is_primary) ?? companies[0]
+  const secondaries = companies.filter((c) => c !== primary)
+  return {
+    primary,
+    secondaries,
+    runKey: `company:${primary.name}`,
+  }
+}
+
+/* ── Context badge component (rendered as inline HTML string for server component) ── */
+function CtxBadge({ co }: { co: CtxCompany }) {
+  const bg = co.brand_colour ?? '#6b7280'
+  const text = co.logo_text ?? co.name.slice(0, 2).toUpperCase()
+
+  if (co.logo) {
+    return (
+      <span
+        className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-black/10 flex items-center justify-center"
+        style={{ background: bg }}
+        title={co.name}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={co.logo} alt={co.name} className="w-7 h-7 object-contain" />
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold font-mono"
+      style={{ background: bg }}
+      title={co.name}
+    >
+      {text}
+    </span>
+  )
+}
+
+function PersonalBadge() {
+  return (
+    <span
+      className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+      style={{ background: '#e5e7eb' }}
+      title="Personal writing"
+    >
+      ✏️
+    </span>
+  )
+}
 
 export default async function WritingsIndexPage({ params, searchParams }: Props) {
   const { username } = await params
@@ -40,14 +112,14 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
   const filterLabel = matchedTag?.label ?? null
 
   // Resolve company filter
-  type CompanyInfo = { id: string; name: string; logo: string | null; brand_colour: string | null }
+  type CompanyInfo = { id: string; name: string; logo: string | null; logo_text: string | null; brand_colour: string | null }
   let activeCompany: CompanyInfo | null = null
   let companyWritingIds: string[] | null = null
 
   if (companySlug) {
     const { data: co } = await (supabase as any)
       .from('companies')
-      .select('id, name, logo, brand_colour')
+      .select('id, name, logo, logo_text, brand_colour')
       .eq('user_id', profile.id)
       .eq('slug', companySlug)
       .single() as { data: CompanyInfo | null }
@@ -61,7 +133,6 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
         .eq('entity_id', co.id) as { data: { writing_id: string }[] | null }
       companyWritingIds = (links ?? []).map((l) => l.writing_id)
     } else {
-      // Unknown company slug — show empty list rather than all writings
       companyWritingIds = []
     }
   }
@@ -69,7 +140,7 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
   // Build query
   let query = (supabase as any)
     .from('writings')
-    .select('id, title, slug, tags, word_count, body_html, published_at', { count: 'exact' })
+    .select('id, title, slug, tags, word_count, body_html, image_url, published_at', { count: 'exact' })
     .eq('user_id', profile.id)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
@@ -80,8 +151,6 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
   }
 
   if (companyWritingIds !== null) {
-    // Filter to only writings linked to the active company
-    // If the array is empty, force no results with a guaranteed non-match
     const ids = companyWritingIds.length > 0 ? companyWritingIds : ['00000000-0000-0000-0000-000000000000']
     query = query.in('id', ids)
   }
@@ -99,37 +168,51 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
   const total = count ?? 0
   const totalPages = Math.ceil(total / PER_PAGE)
 
-  // Fetch linked companies for professional writings (for logo display)
+  // Fetch linked companies with is_primary + logo_text
   const writingIds = rows.map((w) => w.id).filter(Boolean) as string[]
-  let writingCompanyMap: Map<string, Array<{ name: string; logo: string | null; brand_colour: string | null }>> = new Map()
+  // Map: writing_id → CtxCompany[]
+  const writingCtxMap = new Map<string, CtxCompany[]>()
 
   if (writingIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: links } = await (supabase as any)
       .from('writing_links')
-      .select('writing_id, entity_id')
+      .select('writing_id, entity_id, is_primary')
       .eq('entity_type', 'company')
-      .in('writing_id', writingIds) as { data: Array<{ writing_id: string; entity_id: string }> | null }
+      .in('writing_id', writingIds) as { data: Array<{ writing_id: string; entity_id: string; is_primary: boolean }> | null }
 
     const companyIds = [...new Set((links ?? []).map((l) => l.entity_id))]
     if (companyIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: companies } = await (supabase as any)
         .from('companies')
-        .select('id, name, logo, brand_colour')
-        .in('id', companyIds) as { data: Array<{ id: string; name: string; logo: string | null; brand_colour: string | null }> | null }
+        .select('id, name, logo, logo_text, brand_colour')
+        .in('id', companyIds) as { data: Array<CompanyInfo> | null }
 
       const companyMap = new Map((companies ?? []).map((c) => [c.id, c]))
 
       for (const link of links ?? []) {
         const co = companyMap.get(link.entity_id)
         if (!co) continue
-        const existing = writingCompanyMap.get(link.writing_id) ?? []
-        existing.push({ name: co.name, logo: co.logo, brand_colour: co.brand_colour })
-        writingCompanyMap.set(link.writing_id, existing)
+        const entry: CtxCompany = {
+          kind: 'company',
+          name: co.name,
+          logo: co.logo,
+          logo_text: co.logo_text,
+          brand_colour: co.brand_colour,
+          is_primary: link.is_primary,
+        }
+        const existing = writingCtxMap.get(link.writing_id) ?? []
+        existing.push(entry)
+        writingCtxMap.set(link.writing_id, existing)
       }
     }
   }
+
+  // Build enriched rows with context
+  const enriched = rows.map((w) => {
+    const companies = w.id ? (writingCtxMap.get(w.id) ?? []) : []
+    const ctx = buildCtx(companies)
+    return { writing: w, ctx }
+  })
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
@@ -139,7 +222,8 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
           <>
             <div className="flex items-center gap-3 mb-2">
               {activeCompany.logo && (
-                <Image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={activeCompany.logo}
                   alt={activeCompany.name}
                   width={32}
@@ -202,102 +286,151 @@ export default async function WritingsIndexPage({ params, searchParams }: Props)
         </div>
       )}
 
-      {/* Writing list */}
-      {rows.length === 0 ? (
+      {/* Writing list — Option D: chronological with inline run headers */}
+      {enriched.length === 0 ? (
         <p className="text-gray-400 py-12 text-center">
           {q ? `No results for "${q}"` : 'No writings yet.'}
         </p>
       ) : (
-        <div className="space-y-10">
-          {rows.map((w) => {
-            const linkedCos = w.id ? writingCompanyMap.get(w.id) ?? [] : []
-            const accentColour = linkedCos.length > 0 ? linkedCos[0].brand_colour : null
+        <div>
+          {enriched.map(({ writing: w, ctx }, i) => {
+            const prevCtx = i > 0 ? enriched[i - 1].ctx : null
+            const isNewRun = prevCtx === null || ctx.runKey !== prevCtx.runKey
+            const nextCtx = i < enriched.length - 1 ? enriched[i + 1].ctx : null
+            const isLastInRun = nextCtx === null || ctx.runKey !== nextCtx.runKey
+
+            const connectorColour = ctx.primary?.brand_colour ?? '#d1d5db'
+            const borderColour = ctx.primary?.brand_colour ?? '#e5e7eb'
+            const excerpt = w.body_html ? excerptFromHtml(w.body_html, 160) : null
+
             return (
-              <article
-                key={w.id}
-                className={accentColour ? 'pl-4 border-l-3' : ''}
-                style={accentColour ? { borderLeftColor: accentColour } : undefined}
-              >
-                <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-                  {w.published_at && (
-                    <time dateTime={w.published_at}>
-                      {new Date(w.published_at).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'long', year: 'numeric',
-                      })}
-                    </time>
-                  )}
-                  {w.word_count ? (
-                    <>
-                      <span>·</span>
-                      <span>{readTimeMinutes(w.word_count)} min read</span>
-                    </>
-                  ) : null}
-                </div>
-                <div className="flex items-start gap-3">
-                  {/* Show per-row logos only in mixed/unfiltered view; in company view the header already shows the logo */}
-                  {linkedCos.length > 0 && !activeCompany && (
-                    <div className="flex -space-x-1 mt-1 shrink-0">
-                      {linkedCos.map((co) =>
-                        co.logo ? (
-                          <Image
-                            key={co.name}
-                            src={co.logo}
-                            alt={co.name}
-                            width={24}
-                            height={24}
-                            className="rounded-sm border border-gray-100"
-                            title={co.name}
-                          />
-                        ) : (
-                          <span
-                            key={co.name}
-                            className="w-6 h-6 rounded-sm border border-gray-100 flex items-center justify-center text-[10px] font-bold text-white"
-                            style={{ backgroundColor: co.brand_colour ?? '#6b7280' }}
-                            title={co.name}
-                          >
-                            {co.name.charAt(0)}
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-semibold mb-2">
+              <div key={w.id}>
+                {/* Inline run header — shown once at the start of each context run */}
+                {isNewRun && ctx.primary && (
+                  <div className="flex items-center gap-3 mb-4 mt-8 first:mt-0">
+                    <CtxBadge co={ctx.primary} />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{ctx.primary.name}</p>
                       <Link
-                        href={`/${username}/writings/${w.slug}`}
-                        className="hover:underline"
+                        href={`/${username}/writings?company=${encodeURIComponent(ctx.primary.name.toLowerCase().replace(/\s+/g, '-'))}`}
+                        className="text-xs text-gray-400 hover:text-gray-600"
                       >
-                        {w.title}
+                        View all →
                       </Link>
-                    </h2>
-                    {w.body_html && (
-                      <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">
-                        {excerptFromHtml(w.body_html, 250)}
-                      </p>
-                    )}
-                    {w.tags && w.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {w.tags.map((tag) => {
-                          const siteTag = siteTags.find((st) => st.label === tag)
-                          return (
-                            <Link
-                              key={tag}
-                              href={
-                                siteTag
-                                  ? `/${username}/writings/tags/${slugify(tag)}`
-                                  : `/${username}/writings?q=${encodeURIComponent(tag)}`
-                              }
-                              className="text-xs text-gray-400 hover:text-gray-700"
-                            >
-                              #{tag}
-                            </Link>
-                          )
-                        })}
-                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Personal run header */}
+                {isNewRun && !ctx.primary && (
+                  <div className="flex items-center gap-3 mb-4 mt-8 first:mt-0">
+                    <PersonalBadge />
+                    <p className="text-sm font-semibold text-gray-800">Personal</p>
+                  </div>
+                )}
+
+                {/* Article row */}
+                <div className="flex gap-0 relative">
+                  {/* Connector line column */}
+                  <div className="flex flex-col items-center flex-shrink-0 w-11 mr-3">
+                    {/* Dot */}
+                    <div
+                      className="w-2 h-2 rounded-full mt-[6px] flex-shrink-0 z-10"
+                      style={{ background: connectorColour, border: `2px solid ${connectorColour}` }}
+                    />
+                    {/* Line to next item in same run */}
+                    {!isLastInRun && (
+                      <div
+                        className="flex-1 w-px mt-1"
+                        style={{ background: connectorColour, opacity: 0.3 }}
+                      />
                     )}
                   </div>
+
+                  {/* Article card */}
+                  <article
+                    className="flex-1 min-w-0 pb-6"
+                    style={{ borderLeft: `2px solid ${borderColour}`, paddingLeft: '14px', marginLeft: '-2px' }}
+                  >
+                    {/* Meta line */}
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-1 flex-wrap">
+                      {w.published_at && (
+                        <time dateTime={w.published_at}>
+                          {new Date(w.published_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                          })}
+                        </time>
+                      )}
+                      {w.word_count ? (
+                        <>
+                          <span>·</span>
+                          <span>{readTimeMinutes(w.word_count)} min read</span>
+                        </>
+                      ) : null}
+                      {/* Secondary company chip(s) */}
+                      {ctx.secondaries.map((sec) => (
+                        <span
+                          key={sec.name}
+                          className="px-1.5 py-0.5 rounded text-[10px] font-semibold text-white"
+                          style={{ background: sec.brand_colour ?? '#6b7280' }}
+                        >
+                          {sec.logo_text ?? sec.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Title + thumbnail */}
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-[17px] font-semibold leading-snug mb-1.5">
+                          <Link
+                            href={`/${username}/writings/${w.slug}`}
+                            className="hover:underline text-gray-900"
+                          >
+                            {w.title}
+                          </Link>
+                        </h2>
+                        {excerpt && (
+                          <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-2">
+                            {excerpt}
+                          </p>
+                        )}
+                        {w.tags && w.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {w.tags.map((tag) => {
+                              const siteTag = siteTags.find((st) => st.label === tag)
+                              return (
+                                <Link
+                                  key={tag}
+                                  href={
+                                    siteTag
+                                      ? `/${username}/writings/tags/${slugify(tag)}`
+                                      : `/${username}/writings?q=${encodeURIComponent(tag)}`
+                                  }
+                                  className="text-xs text-gray-400 hover:text-gray-700"
+                                >
+                                  #{tag}
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      {/* Thumbnail */}
+                      {w.image_url && (
+                        <div className="flex-shrink-0 w-[72px] h-12 rounded overflow-hidden border border-gray-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={w.image_url}
+                            alt={w.title ?? ''}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </article>
                 </div>
-              </article>
+              </div>
             )
           })}
         </div>
