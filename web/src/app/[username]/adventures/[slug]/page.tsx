@@ -12,6 +12,88 @@ interface Props {
   params: Promise<{ username: string; slug: string }>
 }
 
+// ── Normalize legacy plain-string photos ────────────────────────────────────
+function normalizePublicPhoto(raw: unknown): { url: string; caption?: string; featured?: boolean } {
+  if (typeof raw === 'string') return { url: raw }
+  return raw as { url: string; caption?: string; featured?: boolean }
+}
+
+// ── Smart public photo display (read-only) ───────────────────────────────────
+function renderPublicPhotos(rawPhotos: unknown[]) {
+  const photos = rawPhotos.map(normalizePublicPhoto)
+  const count = photos.length
+  if (count === 0) return null
+
+  const label =
+    count === 1 ? 'Photo'
+    : count <= 3 ? `${count} Photos — equal grid`
+    : `${count} Photos — mosaic`
+
+  // 1 photo: full width
+  if (count === 1) {
+    return (
+      <div className="mt-2">
+        <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+        <div className="w-full overflow-hidden border-2 border-ink" style={{ maxHeight: 280 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photos[0].url} alt={photos[0].caption ?? ''} className="w-full object-cover" style={{ maxHeight: 280 }} />
+        </div>
+        {photos[0].caption && (
+          <p className="font-mono text-[0.5rem] text-ink-muted mt-1 italic">{photos[0].caption}</p>
+        )}
+      </div>
+    )
+  }
+
+  // 2–3 photos: equal grid
+  if (count <= 3) {
+    return (
+      <div className="mt-2">
+        <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, gap: '3px' }}>
+          {photos.map((p, i) => (
+            <div key={i} className="overflow-hidden border-2 border-ink" style={{ aspectRatio: '1' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url} alt={p.caption ?? ''} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // 4+ photos: mosaic — featured photo (featured:true flag, or first) is large
+  const featIdx = Math.max(0, photos.findIndex((p) => p.featured))
+  const indexed = photos.map((p, i) => ({ photo: p, idx: i }))
+  const sortedForMosaic = [indexed[featIdx], ...indexed.filter((_, i) => i !== featIdx)]
+
+  return (
+    <div className="mt-2">
+      <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gridAutoRows: '80px', gap: '3px' }}>
+        {sortedForMosaic.map(({ photo, idx }) => {
+          const isFeatured = idx === featIdx
+          return (
+            <div
+              key={idx}
+              className="relative overflow-hidden border-2 border-ink"
+              style={isFeatured ? { gridColumn: 'span 4', gridRow: 'span 2' } : { gridColumn: 'span 2', gridRow: 'span 1' }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+              {isFeatured && (
+                <div className="absolute bottom-2 left-2 font-mono text-[0.45rem] bg-black/60 text-white px-1.5 py-0.5 uppercase tracking-wider">
+                  Featured
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default async function AdventurePage({ params }: Props) {
   const { username, slug } = await params
   const supabase = await createClient()
@@ -96,16 +178,7 @@ export default async function AdventurePage({ params }: Props) {
     return (
       <>
         {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
-        {post.photos && (post.photos as { url: string }[]).length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-2">
-            {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-              <div key={i} className="border-2 border-ink/10 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.caption ?? ''} className="max-w-[300px] h-auto" />
-              </div>
-            ))}
-          </div>
-        )}
+        {post.photos && post.photos.length > 0 && renderPublicPhotos(post.photos)}
       </>
     )
   }
@@ -212,37 +285,54 @@ export default async function AdventurePage({ params }: Props) {
       {theme === 'journal' && (() => {
         // Group posts by chapter, inserting chapter headers
         let lastChapter: number | null | undefined = -999
+        let postIndex = 0
         return (
-          <div className="relative pl-8 border-l-2 border-ink/10">
+          <div>
             {allPosts.map((post) => {
               const showChapterHeader = chapters.length > 0 && post.chapter_index !== lastChapter
               const chapterNode = showChapterHeader && post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index] ? (
-                <div key={`ch-${post.chapter_index}`} className="mb-6 -ml-8 pl-8 relative">
-                  <div className="absolute -left-[9px] top-2 w-5 h-5 rounded-full bg-orange border-2 border-bg flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-bg">{post.chapter_index + 1}</span>
-                  </div>
-                  <div className="pb-2 border-b-2 border-ink/10">
-                    <span className="font-mono text-[0.6rem] text-orange uppercase">Chapter {post.chapter_index + 1}</span>
-                    <h3 className="font-head font-[900] text-[1.1rem] uppercase">{chapters[post.chapter_index].title}</h3>
-                  </div>
+                <div key={`ch-${post.chapter_index}`} className="mb-0 pb-3 border-b-2 border-ink/20">
+                  <span className="font-mono text-[0.6rem] text-orange uppercase">Chapter {post.chapter_index + 1}</span>
+                  <h3 className="font-head font-[900] text-[1.1rem] uppercase">{chapters[post.chapter_index].title}</h3>
                 </div>
               ) : null
               lastChapter = post.chapter_index
+              const currentIndex = postIndex++
+              const showTopBorder = !showChapterHeader && currentIndex > 0
+              // Parse date parts for sidebar
+              const postDate = new Date(post.posted_at)
+              const postDay = postDate.getDate()
+              const postMonthYear = postDate
+                .toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+                .toUpperCase()
+              const postTime = postDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
               return (
                 <div key={post.id}>
                   {chapterNode}
-                  <div className="mb-8 relative">
-                    <div className={`absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 ${
-                      post.post_type === 'photo' ? 'bg-yellow border-yellow' :
-                      post.post_type === 'checkin' ? 'bg-orange border-orange' :
-                      post.post_type === 'article_link' ? 'bg-green border-green' :
-                      'bg-ink/30 border-ink/30'
-                    }`} />
-                    <div className="font-mono text-[0.6rem] text-ink-muted uppercase mb-2">
-                      {formatDateTime(post.posted_at)}
-                      {post.location_name && <span className="text-orange ml-2">📍 {post.location_name}</span>}
+                  {/* Magazine 2-column post row */}
+                  <div
+                    className={showTopBorder ? 'border-t-[3px] border-ink' : ''}
+                    style={showTopBorder ? { paddingTop: 22 } : { paddingTop: chapterNode ? 16 : 0 }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: 0 }}>
+                      {/* Sidebar */}
+                      <div className="pr-4 pt-0.5">
+                        <div className="font-head font-[900] text-[2rem] leading-none text-ink">{postDay}</div>
+                        <div className="font-mono text-[0.72rem] uppercase text-ink/75 leading-snug mt-0.5 tracking-wide">
+                          {postMonthYear}
+                        </div>
+                        <div className="font-mono text-[0.65rem] text-ink/65 mt-0.5">{postTime}</div>
+                        {post.location_name && (
+                          <div className="font-head font-bold text-[0.7rem] uppercase text-orange mt-3 leading-tight break-words">
+                            📍 {post.location_name}
+                          </div>
+                        )}
+                      </div>
+                      {/* Content column */}
+                      <div className="border-l-[3px] border-ink pl-[18px] min-w-0 pb-5">
+                        {renderPostContent(post)}
+                      </div>
                     </div>
-                    {renderPostContent(post)}
                   </div>
                 </div>
               )
@@ -267,16 +357,7 @@ export default async function AdventurePage({ params }: Props) {
                   {chapterPosts.map((post) => (
                     <div key={post.id}>
                       {post.body && <p className="text-[0.92rem] leading-relaxed mb-2">{post.body}</p>}
-                      {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                        <div className="flex gap-2 flex-wrap mt-2">
-                          {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                            <div key={i} className="border-2 border-ink/10 overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={photo.url} alt={photo.caption ?? ''} className="max-w-full h-auto" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {post.photos && post.photos.length > 0 && renderPublicPhotos(post.photos)}
                       <div className="font-mono text-[0.55rem] text-ink-muted mt-2">
                         {formatDateTime(post.posted_at)}
                         {post.location_name && <span className="text-orange ml-2">📍 {post.location_name}</span>}
@@ -298,15 +379,8 @@ export default async function AdventurePage({ params }: Props) {
               <div className="font-mono text-[0.55rem] text-orange uppercase mb-2">
                 {post.post_type === 'photo' ? '📸 Photo' : post.post_type === 'checkin' ? '📍 Check-in' : '💬 Post'}
               </div>
-              {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                <div className="mb-3">
-                  {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                    <div key={i} className="overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-auto" />
-                    </div>
-                  ))}
-                </div>
+              {post.photos && post.photos.length > 0 && (
+                <div className="mb-3">{renderPublicPhotos(post.photos)}</div>
               )}
               {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
               <div className="font-mono text-[0.55rem] text-ink-muted">
@@ -414,16 +488,7 @@ export default async function AdventurePage({ params }: Props) {
                   <span className="font-mono text-[0.5rem] text-ink-muted ml-auto">{formatDateTime(post.posted_at)}</span>
                 </div>
                 {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
-                {post.photos && (post.photos as { url: string }[]).length > 0 && (
-                  <div className="flex gap-2 flex-wrap">
-                    {(post.photos as { url: string; caption?: string }[]).map((photo, i) => (
-                      <div key={i} className="w-20 h-20 border-2 border-ink/10 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {post.photos && post.photos.length > 0 && renderPublicPhotos(post.photos)}
                 {post.location_name && (
                   <div className="font-mono text-[0.55rem] text-orange mt-2">📍 {post.location_name}</div>
                 )}

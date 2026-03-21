@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { AdventurePost, PostType, Chapter } from '@/lib/adventures'
+import type { AdventurePost, PostType, Chapter, PhotoItem } from '@/lib/adventures'
 
 interface AdventurePostFeedProps {
   adventureId: string
@@ -15,6 +15,129 @@ const POST_TYPE_LABELS: Record<PostType, { icon: string; label: string }> = {
   article_link: { icon: '📝', label: 'Link writing' },
 }
 
+// ── Normalize legacy plain-string photos into PhotoItem objects ──────────────
+function normalizePhoto(raw: unknown): PhotoItem {
+  if (typeof raw === 'string') return { url: raw }
+  return raw as PhotoItem
+}
+
+// ── Smart photo display ──────────────────────────────────────────────────────
+function PhotoDisplay({
+  photos,
+  interactive = false,
+  featuredIndex = 0,
+  onFeature,
+}: {
+  photos: PhotoItem[]
+  interactive?: boolean
+  featuredIndex?: number
+  onFeature?: (index: number) => void
+}) {
+  const count = photos.length
+  if (count === 0) return null
+
+  const label =
+    count === 1 ? 'Photo'
+    : count === 2 ? '2 Photos — equal grid'
+    : count === 3 ? '3 Photos — equal grid'
+    : `${count} Photos — mosaic (★ to feature)`
+
+  // ── 1 photo: full width ──
+  if (count === 1) {
+    return (
+      <div>
+        <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+        <div className="w-full overflow-hidden border-2 border-ink" style={{ maxHeight: 280 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photos[0].url}
+            alt={photos[0].caption ?? ''}
+            className="w-full object-cover"
+            style={{ maxHeight: 280 }}
+          />
+        </div>
+        {photos[0].caption && (
+          <p className="font-mono text-[0.5rem] text-ink-muted mt-1 italic">{photos[0].caption}</p>
+        )}
+      </div>
+    )
+  }
+
+  // ── 2–3 photos: equal grid ──
+  if (count <= 3) {
+    return (
+      <div>
+        <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+        <div
+          className="gap-[3px]"
+          style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)` }}
+        >
+          {photos.map((p, i) => (
+            <div key={i} className="overflow-hidden border-2 border-ink" style={{ aspectRatio: '1' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url} alt={p.caption ?? ''} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── 4+ photos: mosaic ──
+  const featIdx = featuredIndex >= 0 && featuredIndex < count ? featuredIndex : 0
+  // Render featured first so CSS grid auto-placement fills remaining cells correctly
+  const indexed = photos.map((p, i) => ({ photo: p, originalIndex: i }))
+  const sortedForMosaic = [indexed[featIdx], ...indexed.filter((_, i) => i !== featIdx)]
+
+  return (
+    <div>
+      <p className="font-mono text-[0.52rem] text-ink-muted uppercase tracking-wide mb-1.5">{label}</p>
+      <div
+        className="gap-[3px]"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gridAutoRows: '80px' }}
+      >
+        {sortedForMosaic.map(({ photo, originalIndex }) => {
+          const isFeatured = originalIndex === featIdx
+          return (
+            <div
+              key={originalIndex}
+              className="relative overflow-hidden border-2 border-ink group/photo"
+              style={
+                isFeatured
+                  ? { gridColumn: 'span 4', gridRow: 'span 2' }
+                  : { gridColumn: 'span 2', gridRow: 'span 1' }
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt={photo.caption ?? ''} className="w-full h-full object-cover" />
+              {isFeatured && (
+                <div className="absolute bottom-2 left-2 font-mono text-[0.45rem] bg-black/60 text-white px-1.5 py-0.5 uppercase tracking-wider">
+                  Featured
+                </div>
+              )}
+              {interactive && (
+                <button
+                  type="button"
+                  onClick={() => onFeature?.(originalIndex)}
+                  title={isFeatured ? 'Featured' : 'Set as featured'}
+                  className={`absolute top-2 right-2 w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] transition-all cursor-pointer ${
+                    isFeatured
+                      ? 'bg-orange text-white opacity-100'
+                      : 'bg-black/60 text-white opacity-0 group-hover/photo:opacity-100'
+                  }`}
+                >
+                  {isFeatured ? '★' : '☆'}
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Main feed component ──────────────────────────────────────────────────────
 export default function AdventurePostFeed({ adventureId, chapters = [] }: AdventurePostFeedProps) {
   const [posts, setPosts] = useState<AdventurePost[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +164,7 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
       .catch(() => setLoading(false))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPosts() }, [adventureId])
 
   const handlePhotoUpload = async (files: FileList) => {
@@ -126,23 +250,16 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
     }
   }
 
-  const formatDate = (d: string) => {
-    const date = new Date(d)
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      + ' · '
-      + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const renderPost = (post: AdventurePost) => (
+  const renderPost = (post: AdventurePost, isFirst: boolean) => (
     <PostCard
       key={post.id}
       post={post}
       chapters={chapters}
       viewMode={viewMode}
+      isFirst={isFirst}
       onDelete={handleDelete}
       onAssignChapter={handleAssignChapter}
       onUpdate={(updated) => setPosts((prev) => prev.map((p) => p.id === updated.id ? { ...p, ...updated } : p))}
-      formatDate={formatDate}
     />
   )
 
@@ -344,8 +461,8 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
                 {chapterPosts.length === 0 ? (
                   <p className="font-mono text-[0.68rem] opacity-30 py-3 pl-4">No posts in this chapter yet.</p>
                 ) : (
-                  <div className="space-y-3 pl-4 border-l-2 border-ink/5">
-                    {chapterPosts.map((post) => renderPost(post))}
+                  <div className="pl-4 border-l-2 border-ink/5">
+                    {chapterPosts.map((post, index) => renderPost(post, index === 0))}
                   </div>
                 )}
               </div>
@@ -361,8 +478,8 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
                   <span className="font-head font-bold text-[0.85rem] uppercase text-ink-muted">Unassigned</span>
                   <span className="font-mono text-[0.55rem] text-ink-muted ml-auto">{unassigned.length} posts</span>
                 </div>
-                <div className="space-y-3 pl-4 border-l-2 border-ink/5">
-                  {unassigned.map((post) => renderPost(post))}
+                <div className="pl-4 border-l-2 border-ink/5">
+                  {unassigned.map((post, index) => renderPost(post, index === 0))}
                 </div>
               </div>
             )
@@ -370,35 +487,59 @@ export default function AdventurePostFeed({ adventureId, chapters = [] }: Advent
         </div>
       ) : (
         /* ── Timeline view ── */
-        <div className="space-y-4">
-          {posts.map((post) => renderPost(post))}
+        <div>
+          {posts.map((post, index) => renderPost(post, index === 0))}
         </div>
       )}
     </div>
   )
 }
 
-/* ── Inline-editable post card ── */
+// ── Magazine-layout post card ────────────────────────────────────────────────
 function PostCard({
-  post, chapters, viewMode, onDelete, onAssignChapter, onUpdate, formatDate,
+  post,
+  chapters,
+  viewMode,
+  isFirst,
+  onDelete,
+  onAssignChapter,
+  onUpdate,
 }: {
   post: AdventurePost
   chapters: Chapter[]
   viewMode: string
+  isFirst: boolean
   onDelete: (id: string) => void
   onAssignChapter: (id: string, ci: number | null) => void
   onUpdate: (updated: Partial<AdventurePost> & { id: string }) => void
-  formatDate: (d: string) => string
 }) {
   const [editing, setEditing] = useState(false)
   const [editBody, setEditBody] = useState(post.body ?? '')
   const [editLocation, setEditLocation] = useState(post.location_name ?? '')
   const [saving, setSaving] = useState(false)
 
+  // Normalize photos and derive featured index
+  const normalizedPhotos = (post.photos ?? [] as unknown[]).map(normalizePhoto)
+  const [featuredIndex, setFeaturedIndex] = useState(() => {
+    const fi = normalizedPhotos.findIndex((p) => p.featured)
+    return fi >= 0 ? fi : 0
+  })
+
   const meta = POST_TYPE_LABELS[post.post_type as PostType] ?? POST_TYPE_LABELS.micro
-  const chapterLabel = post.chapter_index !== null && post.chapter_index !== undefined && chapters[post.chapter_index]
-    ? `Ch.${post.chapter_index + 1}: ${chapters[post.chapter_index].title}`
-    : null
+  const chapterLabel =
+    post.chapter_index !== null &&
+    post.chapter_index !== undefined &&
+    chapters[post.chapter_index]
+      ? `Ch.${post.chapter_index + 1}: ${chapters[post.chapter_index].title}`
+      : null
+
+  // Parse date parts for sidebar
+  const date = new Date(post.posted_at)
+  const day = date.getDate()
+  const monthYear = date
+    .toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+    .toUpperCase()
+  const time = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
   const handleSave = async () => {
     setSaving(true)
@@ -423,105 +564,139 @@ function PostCard({
     setEditing(false)
   }
 
+  const handleFeature = async (index: number) => {
+    setFeaturedIndex(index)
+    const updatedPhotos = normalizedPhotos.map((p, i) => ({ ...p, featured: i === index }))
+    await fetch(`/api/adventure-posts/${post.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photos: updatedPhotos }),
+    })
+    onUpdate({ id: post.id, photos: updatedPhotos })
+  }
+
   return (
-    <div className="border-3 border-ink/20 p-4 bg-bg-card group">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-[0.6rem] font-bold uppercase text-ink-muted">
-            {meta.icon} {meta.label}
+    <div
+      className={`relative group ${!isFirst ? 'border-t-[3px] border-ink' : ''}`}
+      style={!isFirst ? { paddingTop: 22 } : undefined}
+    >
+      {/* ── Hover controls: chapter dropdown, Edit, Delete ── */}
+      <div className="absolute top-0 right-0 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        {viewMode === 'timeline' && chapterLabel && (
+          <span className="font-mono text-[0.52rem] px-1.5 py-0.5 border border-ink/20 text-ink-muted bg-bg-card">
+            {chapterLabel}
           </span>
-          {!editing && post.location_name && (
-            <span className="font-mono text-[0.6rem] text-orange">📍 {post.location_name}</span>
-          )}
-          {viewMode === 'timeline' && chapterLabel && (
-            <span className="font-mono text-[0.55rem] px-1.5 py-0.5 bg-ink/5 text-ink-muted">{chapterLabel}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {chapters.length > 0 && (
-            <select
-              value={post.chapter_index ?? ''}
-              onChange={(e) => onAssignChapter(post.id, e.target.value === '' ? null : Number(e.target.value))}
-              className="font-mono text-[0.55rem] text-ink-muted bg-transparent border border-transparent hover:border-ink/20 focus:border-ink/30 px-1 py-0.5 cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all outline-none"
-            >
-              <option value="">No chapter</option>
-              {chapters.map((ch, i) => (
-                <option key={i} value={i}>Ch.{i + 1}: {ch.title}</option>
-              ))}
-            </select>
-          )}
-          <span className="font-mono text-[0.55rem] text-ink-muted">{formatDate(post.posted_at)}</span>
-          {!editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="font-mono text-[0.55rem] text-ink-muted hover:text-ink opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-            >
-              Edit
-            </button>
-          )}
+        )}
+        {chapters.length > 0 && (
+          <select
+            value={post.chapter_index ?? ''}
+            onChange={(e) =>
+              onAssignChapter(post.id, e.target.value === '' ? null : Number(e.target.value))
+            }
+            className="font-mono text-[0.52rem] text-ink-muted bg-bg-card border border-ink/20 px-1.5 py-0.5 cursor-pointer focus:outline-none"
+          >
+            <option value="">No chapter</option>
+            {chapters.map((ch, i) => (
+              <option key={i} value={i}>
+                Ch.{i + 1}: {ch.title}
+              </option>
+            ))}
+          </select>
+        )}
+        {!editing && (
           <button
             type="button"
-            onClick={() => onDelete(post.id)}
-            className="font-mono text-[0.55rem] text-ink-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+            onClick={() => setEditing(true)}
+            className="font-mono text-[0.52rem] px-1.5 py-0.5 border border-ink/20 text-ink-muted bg-bg-card hover:text-ink hover:border-ink transition-colors cursor-pointer"
           >
-            Delete
+            Edit
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => onDelete(post.id)}
+          className="font-mono text-[0.52rem] px-1.5 py-0.5 border border-ink/20 text-ink-muted bg-bg-card hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"
+        >
+          Delete
+        </button>
       </div>
 
-      {editing ? (
-        <div className="space-y-2 mt-2">
-          <textarea
-            value={editBody}
-            onChange={(e) => setEditBody(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border-3 border-ink bg-bg font-body text-[0.88rem] focus:outline-none focus:shadow-[3px_3px_0_var(--ink)] transition-shadow resize-y"
-          />
-          <input
-            value={editLocation}
-            onChange={(e) => setEditLocation(e.target.value)}
-            placeholder="📍 Location (optional)"
-            className="w-full px-3 py-2 border-2 border-ink/20 bg-bg font-mono text-[0.75rem] focus:outline-none focus:border-ink/50 transition-colors"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-1.5 bg-ink text-bg font-mono text-[0.65rem] font-bold uppercase border-2 border-ink hover:bg-orange hover:border-orange transition-colors disabled:opacity-40 cursor-pointer"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="font-mono text-[0.65rem] text-ink-muted hover:text-ink cursor-pointer transition-colors"
-            >
-              Cancel
-            </button>
+      {/* ── Magazine 2-column layout ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: 0 }}>
+
+        {/* ── Sidebar ── */}
+        <div className="pr-4 pt-0.5 flex-shrink-0">
+          {/* Day number — large and bold */}
+          <div className="font-head font-[900] text-[2rem] leading-none text-ink">{day}</div>
+          {/* Month + year — visible but not competing */}
+          <div className="font-mono text-[0.72rem] uppercase text-ink/75 leading-snug mt-0.5 tracking-wide">
+            {monthYear}
           </div>
-        </div>
-      ) : (
-        <>
-          {post.body && <p className="text-[0.88rem] leading-relaxed mb-2">{post.body}</p>}
-          {post.photos && post.photos.length > 0 && (
-            <div className="flex gap-2 flex-wrap mt-2">
-              {post.photos.map((photo, i) => {
-                // Handle both {url, caption} objects and plain URL strings (legacy data)
-                const url = typeof photo === 'string' ? photo : (photo as { url: string }).url
-                const caption = typeof photo === 'string' ? '' : (photo as { url: string; caption?: string }).caption ?? ''
-                return (
-                  <div key={i} className="w-24 h-24 border-2 border-ink/10 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={caption} className="w-full h-full object-cover" />
-                  </div>
-                )
-              })}
+          {/* Time */}
+          <div className="font-mono text-[0.65rem] text-ink/65 mt-0.5">{time}</div>
+          {/* Location — prominent orange */}
+          {post.location_name && (
+            <div className="font-head font-bold text-[0.7rem] uppercase text-orange mt-3 leading-tight break-words">
+              📍 {post.location_name}
             </div>
           )}
-        </>
-      )}
+          {/* Post type — tiny muted */}
+          <div className="font-mono text-[0.5rem] text-ink-muted uppercase mt-3 tracking-wide">
+            {meta.icon} {meta.label}
+          </div>
+        </div>
+
+        {/* ── Content column ── */}
+        <div className="border-l-[3px] border-ink pl-[18px] min-w-0">
+          {editing ? (
+            <div className="space-y-2">
+              <textarea
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border-3 border-ink bg-bg font-body text-[0.88rem] focus:outline-none focus:shadow-[3px_3px_0_var(--ink)] transition-shadow resize-y"
+              />
+              <input
+                value={editLocation}
+                onChange={(e) => setEditLocation(e.target.value)}
+                placeholder="📍 Location (optional)"
+                className="w-full px-3 py-2 border-2 border-ink/20 bg-bg font-mono text-[0.75rem] focus:outline-none focus:border-ink/50 transition-colors"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-1.5 bg-ink text-bg font-mono text-[0.65rem] font-bold uppercase border-2 border-ink hover:bg-orange hover:border-orange transition-colors disabled:opacity-40 cursor-pointer"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="font-mono text-[0.65rem] text-ink-muted hover:text-ink cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {post.body && (
+                <p className="text-[0.88rem] leading-relaxed mb-3">{post.body}</p>
+              )}
+              {normalizedPhotos.length > 0 && (
+                <PhotoDisplay
+                  photos={normalizedPhotos}
+                  interactive
+                  featuredIndex={featuredIndex}
+                  onFeature={handleFeature}
+                />
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
